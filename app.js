@@ -160,7 +160,7 @@
       await loadMember();
       $("#login-view").hidden = true;
       $("#app-view").hidden = false;
-      $("#member-label").textContent = `${state.member.display_name} · casa condivisa`;
+      $("#member-label").textContent = `${state.member.display_name} - casa condivisa`;
       setView("today");
       await loadAll();
     } catch (error) {
@@ -258,7 +258,7 @@
     const box = $("#today-survival-shopping");
     if (state.survival && urgentShopping.length) {
       box.hidden = false;
-      box.innerHTML = `<strong>Da tenere a mente</strong>${urgentShopping.map((item) => `<p>${escapeHtml(item.title)} · ${escapeHtml(item.category)}</p>`).join("")}`;
+      box.innerHTML = `<strong>Da tenere a mente</strong>${urgentShopping.map((item) => `<p>${escapeHtml(item.title)} - ${escapeHtml(item.category)}</p>`).join("")}`;
     } else {
       box.hidden = true;
       box.innerHTML = "";
@@ -369,7 +369,7 @@
         ${items.map((item) => `
           <label class="trip-item ${item.is_done ? "is-done" : ""}">
             <input type="checkbox" data-action="trip-item-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
-            <span>${escapeHtml(item.title)} · ${escapeHtml(item.category)}</span>
+            <span>${escapeHtml(item.title)} - ${escapeHtml(item.category)}</span>
           </label>
         `).join("")}
       </div>
@@ -627,6 +627,13 @@
   async function completeShoppingTrip(id) {
     const trip = state.shoppingTrips.find((item) => item.id === id);
     if (!trip) return;
+    const pendingItems = (trip.shopping_trip_items || []).filter((item) => !item.is_done);
+    if (pendingItems.length) {
+      const message = pendingItems.length === 1
+        ? "C'e' ancora 1 articolo non spuntato. Vuoi chiudere comunque la spesa?"
+        : `Ci sono ancora ${pendingItems.length} articoli non spuntati. Vuoi chiudere comunque la spesa?`;
+      if (!window.confirm(message)) return;
+    }
     const now = new Date().toISOString();
     const sourceIds = (trip.shopping_trip_items || []).map((item) => item.shopping_item_id).filter(Boolean);
 

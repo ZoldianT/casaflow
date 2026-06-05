@@ -3,13 +3,13 @@ create table if not exists shopping_trips (
   household_id uuid not null references households(id) on delete cascade,
   task_id uuid not null references tasks(id) on delete cascade,
   title text not null,
-  assigned_to text not null default 'Chi può',
+  assigned_to text not null default 'Chi puo',
   status text not null default 'Da fare',
   created_by uuid references auth.users(id),
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
-  constraint shopping_trips_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi può')),
+  constraint shopping_trips_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo')),
   constraint shopping_trips_status_check check (status in ('Da fare', 'Fatto', 'Archiviato'))
 );
 

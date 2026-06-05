@@ -3,7 +3,7 @@
 
   const TASK_CATEGORIES = ["Bimba", "Spesa", "Bucato", "Cucina", "Pulizie", "Casa / lavoretti", "Amministrativo", "Altro"];
   const SHOPPING_CATEGORIES = ["Bimba", "Alimentari", "Casa", "Farmacia", "Igiene", "Altro"];
-  const ASSIGNEES = ["Peppe", "Moglie", "Chi può"];
+  const ASSIGNEES = ["Peppe", "Moglie", "Chi puo"];
   const PRIORITIES = ["Essenziale", "Normale", "Bassa"];
   const TASK_STATUSES = ["Da fare", "Fatto", "Archiviato"];
   const RECURRENCES = ["Nessuna", "Giornaliera", "Settimanale", "Ogni 2 settimane", "Mensile"];
@@ -78,7 +78,7 @@
       button.addEventListener("click", () => setView(button.dataset.target));
     });
 
-    $("#add-button").addEventListener("click", () => $("#add-dialog").showModal());
+    $("#add-button").addEventListener("click", () => openContextualAdd());
     $$("[data-close-dialog]").forEach((button) => {
       button.addEventListener("click", () => button.closest("dialog").close());
     });
@@ -118,8 +118,8 @@
     fillSelect("#shopping-pack-category", ["Tutte", ...SHOPPING_CATEGORIES]);
     fillSelect("#shopping-pack-assigned", ASSIGNEES);
     fillSelect("#laundry-assigned", ASSIGNEES);
-    $("#laundry-assigned").value = "Chi può";
-    $("#shopping-pack-assigned").value = "Chi può";
+    $("#laundry-assigned").value = "Chi puo";
+    $("#shopping-pack-assigned").value = "Chi puo";
   }
 
   function fillSelect(selector, values) {
@@ -733,15 +733,33 @@
     await loadAll();
   }
 
+  function openContextualAdd() {
+    if (state.activeView === "shopping") {
+      $("#shopping-title").focus();
+      return;
+    }
+    if (state.activeView === "laundry") {
+      $("#laundry-title").focus();
+      return;
+    }
+    openTaskDialog();
+  }
+
+  function defaultDueDateForActiveView() {
+    if (state.activeView === "today") return todayKey();
+    if (state.activeView === "tomorrow") return dateKey(addDays(new Date(), 1));
+    return "";
+  }
+
   function openTaskDialog(task) {
     $("#task-dialog-title").textContent = task ? "Modifica task" : "Aggiungi task";
     $("#task-id").value = task ? task.id : "";
     $("#task-title").value = task ? task.title : "";
     $("#task-note").value = task && task.note ? task.note : "";
     $("#task-category").value = task ? task.category : "Altro";
-    $("#task-assigned").value = task ? task.assigned_to : "Chi può";
+    $("#task-assigned").value = task ? task.assigned_to : "Chi puo";
     $("#task-priority").value = task ? task.priority : "Normale";
-    $("#task-due-date").value = task && task.due_date ? task.due_date : "";
+    $("#task-due-date").value = task && task.due_date ? task.due_date : defaultDueDateForActiveView();
     $("#task-status").value = task ? task.status : "Da fare";
     $("#task-recurrence").value = task ? task.recurrence : "Nessuna";
     $("#task-dialog").showModal();

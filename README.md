@@ -76,7 +76,7 @@ Poi apri l'URL locale indicato dal comando.
 - Niente registrazione pubblica: gli utenti si creano a mano in Supabase.
 - Niente realtime: i dati si ricaricano dopo ogni modifica o con il pulsante Aggiorna.
 - Niente PWA completa, notifiche push, calendario avanzato o ruoli.
-- Le etichette principali seguono i valori richiesti dallo schema, inclusa l'assegnazione `Chi può`.
+- Le etichette principali seguono i valori richiesti dallo schema, inclusa l'assegnazione `Chi puo`.
 
 ## Note tecniche
 

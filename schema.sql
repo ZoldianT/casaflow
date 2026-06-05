@@ -21,7 +21,7 @@ create table if not exists tasks (
   title text not null,
   note text,
   category text not null default 'Altro',
-  assigned_to text not null default 'Chi può',
+  assigned_to text not null default 'Chi puo',
   priority text not null default 'Normale',
   due_date date,
   status text not null default 'Da fare',
@@ -31,7 +31,7 @@ create table if not exists tasks (
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
   constraint tasks_category_check check (category in ('Bimba', 'Spesa', 'Bucato', 'Cucina', 'Pulizie', 'Casa / lavoretti', 'Amministrativo', 'Altro')),
-  constraint tasks_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi può')),
+  constraint tasks_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo')),
   constraint tasks_priority_check check (priority in ('Essenziale', 'Normale', 'Bassa')),
   constraint tasks_status_check check (status in ('Da fare', 'Fatto', 'Archiviato')),
   constraint tasks_recurrence_check check (recurrence in ('Nessuna', 'Giornaliera', 'Settimanale', 'Ogni 2 settimane', 'Mensile'))
@@ -57,13 +57,13 @@ create table if not exists shopping_trips (
   household_id uuid not null references households(id) on delete cascade,
   task_id uuid not null references tasks(id) on delete cascade,
   title text not null,
-  assigned_to text not null default 'Chi può',
+  assigned_to text not null default 'Chi puo',
   status text not null default 'Da fare',
   created_by uuid references auth.users(id),
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
-  constraint shopping_trips_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi può')),
+  constraint shopping_trips_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo')),
   constraint shopping_trips_status_check check (status in ('Da fare', 'Fatto', 'Archiviato'))
 );
 
@@ -86,14 +86,14 @@ create table if not exists laundry_items (
   household_id uuid not null references households(id) on delete cascade,
   title text not null,
   laundry_status text not null default 'Da lavare',
-  assigned_to text not null default 'Chi può',
+  assigned_to text not null default 'Chi puo',
   note text,
   created_by uuid references auth.users(id),
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
   constraint laundry_status_check check (laundry_status in ('Da lavare', 'Lavatrice da avviare', 'Da stendere / asciugare', 'Da piegare', 'Da mettere a posto', 'Fatto')),
-  constraint laundry_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi può'))
+  constraint laundry_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo'))
 );
 
 create table if not exists reset_checklist (

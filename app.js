@@ -25,6 +25,7 @@
     householdId: null,
     activeView: "today",
     survival: false,
+    syncStatus: "idle",
     tasks: [],
     shopping: [],
     shoppingTrips: [],
@@ -71,6 +72,7 @@
     $("#refresh-btn").addEventListener("click", loadAll);
     $("#survival-toggle").addEventListener("change", (event) => {
       state.survival = event.target.checked;
+      showToast(state.survival ? "Sopravvivenza attiva: solo essenziale." : "Sopravvivenza disattivata.");
       render();
     });
 
@@ -185,6 +187,7 @@
   async function loadAll() {
     if (!state.householdId) return;
     setGlobalError("");
+    setSyncStatus("syncing", "Aggiornamento...");
     try {
       await ensureTodayChecklist();
       const [tasks, shopping, trips, laundry, reset] = await Promise.all([
@@ -205,8 +208,10 @@
       }));
       state.laundry = laundry.data || [];
       state.reset = reset.data || [];
+      setSyncStatus("ok", `Aggiornato ${formatTime(new Date())}`);
       render();
     } catch (error) {
+      setSyncStatus("error", "Non sincronizzato");
       setGlobalError("Errore nel caricamento dei dati.");
     }
   }
@@ -247,12 +252,13 @@
   }
 
   function renderToday() {
+    $("#survival-banner").hidden = !state.survival;
     let tasks = state.tasks.filter((task) => task.status === "Da fare" && (task.due_date === todayKey() || (!task.due_date && task.priority === "Essenziale")));
     if (state.survival) tasks = tasks.filter((task) => task.priority === "Essenziale");
     tasks.sort(sortByPriority);
     $("#today-list").innerHTML = tasks.length
       ? tasks.map(renderTaskCard).join("")
-      : empty("Per oggi non c'e' nulla di urgente. Respira.");
+      : empty(state.survival ? "In sopravvivenza non c'e' nulla di essenziale. Respira." : "Per oggi non c'e' nulla di urgente. Respira.");
 
     const urgentShopping = state.shopping.filter((item) => item.status === "Da comprare" && ["Bimba", "Farmacia"].includes(item.category));
     const box = $("#today-survival-shopping");
@@ -397,7 +403,7 @@
                 <div class="meta"><span class="badge">${escapeHtml(item.assigned_to)}</span></div>
                 ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
                 <div class="card-actions">
-                  <button class="primary" type="button" data-action="laundry-next" data-id="${item.id}">Avanza</button>
+                  <button class="primary" type="button" data-action="laundry-next" data-id="${item.id}">${nextLaundryActionLabel(item.laundry_status)}</button>
                   <button class="ghost" type="button" data-action="laundry-delete" data-id="${item.id}">Elimina</button>
                 </div>
               </article>
@@ -437,6 +443,7 @@
       created_by: state.session.user.id
     };
     if (!payload.title) return showToast("Inserisci un titolo.");
+    setSyncStatus("saving", "Salvataggio...");
     const request = id
       ? state.client.from("tasks").update(payload).eq("id", id)
       : state.client.from("tasks").insert(payload);
@@ -450,6 +457,7 @@
     event.preventDefault();
     const title = $("#shopping-title").value.trim();
     if (!title) return showToast("Inserisci cosa manca.");
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("shopping_items").insert({
       household_id: state.householdId,
       title,
@@ -474,6 +482,7 @@
     ));
 
     if (!candidates.length) return showToast("Non ci sono cose da impacchettare per questa categoria.");
+    setSyncStatus("saving", "Salvataggio...");
 
     const title = $("#shopping-pack-title").value.trim() || (category === "Tutte" ? "Fare la spesa" : `Spesa ${category.toLowerCase()}`);
     const { data: task, error: taskError } = await state.client
@@ -530,6 +539,7 @@
     event.preventDefault();
     const title = $("#laundry-title").value.trim();
     if (!title) return showToast("Inserisci un titolo per il bucato.");
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("laundry_items").insert({
       household_id: state.householdId,
       title,
@@ -560,12 +570,14 @@
 
   async function handleCheckChange(event) {
     if (event.target.dataset.action === "trip-item-toggle") {
+      setSyncStatus("saving", "Salvataggio...");
       const { error } = await state.client.from("shopping_trip_items").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
       if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
       await loadAll();
       return;
     }
     if (event.target.dataset.action !== "reset-toggle") return;
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("reset_checklist").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
     if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
     await loadAll();
@@ -584,6 +596,7 @@
 
     const task = state.tasks.find((item) => item.id === id);
     if (!task) return;
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: new Date().toISOString() }).eq("id", id);
     if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
     if (task.recurrence !== "Nessuna") {
@@ -607,6 +620,7 @@
   }
 
   async function updateTask(id, payload) {
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("tasks").update(payload).eq("id", id);
     if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
     await loadAll();
@@ -615,6 +629,7 @@
   async function toggleShopping(id) {
     const item = state.shopping.find((row) => row.id === id);
     if (!item) return;
+    setSyncStatus("saving", "Salvataggio...");
     const bought = item.status !== "Comprato";
     const { error } = await state.client.from("shopping_items").update({
       status: bought ? "Comprato" : "Da comprare",
@@ -634,6 +649,7 @@
         : `Ci sono ancora ${pendingItems.length} articoli non spuntati. Vuoi chiudere comunque la spesa?`;
       if (!window.confirm(message)) return;
     }
+    setSyncStatus("saving", "Salvataggio...");
     const now = new Date().toISOString();
     const sourceIds = (trip.shopping_trip_items || []).map((item) => item.shopping_item_id).filter(Boolean);
 
@@ -673,6 +689,7 @@
     const title = form.elements.title.value.trim();
     const category = form.elements.category.value;
     if (!title) return showToast("Inserisci cosa aggiungere.");
+    setSyncStatus("saving", "Salvataggio...");
 
     const { data: shoppingItem, error: shoppingError } = await state.client
       .from("shopping_items")
@@ -710,6 +727,7 @@
   async function advanceLaundry(id) {
     const item = state.laundry.find((row) => row.id === id);
     if (!item) return;
+    setSyncStatus("saving", "Salvataggio...");
     const next = LAUNDRY_STATUSES[LAUNDRY_STATUSES.indexOf(item.laundry_status) + 1] || "Fatto";
     const payload = { laundry_status: next, completed_at: next === "Fatto" ? new Date().toISOString() : null };
     const { error } = await state.client.from("laundry_items").update(payload).eq("id", id);
@@ -718,12 +736,14 @@
   }
 
   async function deleteRow(table, id) {
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from(table).delete().eq("id", id);
     if (error) return showToast("Non riesco a eliminare. Controlla la connessione.");
     await loadAll();
   }
 
   async function resetTodayChecklist() {
+    setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client
       .from("reset_checklist")
       .update({ is_done: false })
@@ -822,6 +842,15 @@
     return new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" }).format(date);
   }
 
+  function formatTime(date) {
+    return new Intl.DateTimeFormat("it-IT", { hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+
+  function nextLaundryActionLabel(status) {
+    const next = LAUNDRY_STATUSES[LAUNDRY_STATUSES.indexOf(status) + 1] || "Fatto";
+    return next === "Fatto" ? "Segna fatto" : `Verso: ${next}`;
+  }
+
   function formatShortDate(value) {
     return new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(parseDate(value));
   }
@@ -834,6 +863,13 @@
     const box = $("#global-error");
     box.textContent = message;
     box.hidden = !message;
+  }
+
+  function setSyncStatus(status, message) {
+    state.syncStatus = status;
+    const box = $("#sync-status");
+    box.textContent = message;
+    box.dataset.status = status;
   }
 
   function showLoginError(message) {

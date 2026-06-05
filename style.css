@@ -193,6 +193,32 @@ textarea {
   padding: 12px;
 }
 
+.sync-status {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sync-status[data-status="saving"],
+.sync-status[data-status="syncing"] {
+  color: var(--primary-dark);
+}
+
+.sync-status[data-status="error"] {
+  color: #7b301a;
+}
+
+.survival-banner {
+  margin-bottom: 12px;
+  border: 1px solid #efd292;
+  border-radius: 8px;
+  background: #fff4cf;
+  color: #5f4420;
+  padding: 12px;
+  font-weight: 800;
+}
+
 .toast {
   position: fixed;
   z-index: 20;

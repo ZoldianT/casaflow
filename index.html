@@ -39,6 +39,7 @@
     </header>
 
     <section id="global-error" class="error-banner" hidden></section>
+    <div id="sync-status" class="sync-status" role="status" aria-live="polite">Aggiornamento...</div>
 
     <section id="today-section" class="view active-view" data-view="today">
       <div class="section-top">
@@ -50,6 +51,9 @@
           <input id="survival-toggle" type="checkbox">
           <span>Sopravvivenza</span>
         </label>
+      </div>
+      <div id="survival-banner" class="survival-banner" hidden>
+        Modalita' sopravvivenza attiva: mostro solo le cose essenziali.
       </div>
       <div id="today-survival-shopping" class="quiet-list" hidden></div>
       <div id="today-list" class="card-list"></div>

@@ -105,6 +105,7 @@
 
     document.addEventListener("click", handleActionClick);
     document.addEventListener("change", handleCheckChange);
+    document.addEventListener("submit", handleDynamicSubmit);
   }
 
   function fillSelects() {
@@ -372,6 +373,13 @@
           </label>
         `).join("")}
       </div>
+      <form class="trip-add-form" data-action="trip-add-item" data-id="${trip.id}">
+        <input name="title" type="text" placeholder="Aggiungi al carrello" required>
+        <select name="category" aria-label="Categoria nuovo articolo">
+          ${SHOPPING_CATEGORIES.map((category) => `<option value="${escapeAttr(category)}">${escapeHtml(category)}</option>`).join("")}
+        </select>
+        <button class="ghost" type="submit">Aggiungi</button>
+      </form>
     `;
   }
 
@@ -563,6 +571,13 @@
     await loadAll();
   }
 
+  async function handleDynamicSubmit(event) {
+    const form = event.target.closest("[data-action='trip-add-item']");
+    if (!form) return;
+    event.preventDefault();
+    await addItemToShoppingTrip(form.dataset.id, form);
+  }
+
   async function completeTask(id) {
     const trip = state.shoppingTrips.find((item) => item.task_id === id);
     if (trip) return completeShoppingTrip(trip.id);
@@ -642,6 +657,46 @@
     if (taskError) return showToast("Spesa chiusa, ma non riesco a completare il task.");
 
     showToast("Spesa chiusa. Bel colpo.");
+    await loadAll();
+  }
+
+  async function addItemToShoppingTrip(tripId, form) {
+    const trip = state.shoppingTrips.find((item) => item.id === tripId);
+    if (!trip) return;
+    const title = form.elements.title.value.trim();
+    const category = form.elements.category.value;
+    if (!title) return showToast("Inserisci cosa aggiungere.");
+
+    const { data: shoppingItem, error: shoppingError } = await state.client
+      .from("shopping_items")
+      .insert({
+        household_id: state.householdId,
+        title,
+        category,
+        status: "Da comprare",
+        created_by: state.session.user.id
+      })
+      .select()
+      .single();
+    if (shoppingError) return showToast("Non riesco ad aggiungere l'articolo.");
+
+    const { error: tripItemError } = await state.client
+      .from("shopping_trip_items")
+      .insert({
+        household_id: state.householdId,
+        trip_id: tripId,
+        shopping_item_id: shoppingItem.id,
+        title,
+        category,
+        is_done: false
+      });
+    if (tripItemError) return showToast("Articolo creato, ma non riesco ad aggiungerlo al carrello.");
+
+    const lines = [...(trip.shopping_trip_items || []).map((item) => `- ${item.title}`), `- ${title}`];
+    await state.client.from("tasks").update({ note: lines.join("\n") }).eq("id", trip.task_id);
+
+    form.reset();
+    showToast("Aggiunto al carrello.");
     await loadAll();
   }
 

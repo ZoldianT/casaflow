@@ -357,6 +357,13 @@ textarea {
   text-decoration: line-through;
 }
 
+.trip-add-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .progress-line {
   margin: 10px 0 0;
   color: var(--muted);
@@ -448,6 +455,10 @@ textarea {
   .pack-form {
     grid-template-columns: 1fr 170px 150px auto;
     align-items: end;
+  }
+
+  .trip-add-form {
+    grid-template-columns: 1fr 150px auto;
   }
 
   .form-grid {

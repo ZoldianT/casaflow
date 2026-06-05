@@ -156,29 +156,34 @@
       <label>Titolo
         <input id="task-title" type="text" required>
       </label>
-      <label>Nota
-        <textarea id="task-note" rows="3"></textarea>
-      </label>
-      <div class="form-grid">
-        <label>Categoria
-          <select id="task-category"></select>
-        </label>
+      <div class="form-grid task-basics">
         <label>Assegnato a
           <select id="task-assigned"></select>
-        </label>
-        <label>Priorita'
-          <select id="task-priority"></select>
         </label>
         <label>Data
           <input id="task-due-date" type="date">
         </label>
-        <label>Stato
-          <select id="task-status"></select>
-        </label>
-        <label>Ricorrenza
-          <select id="task-recurrence"></select>
-        </label>
       </div>
+      <details class="advanced-fields">
+        <summary>Opzioni avanzate</summary>
+        <div class="form-grid">
+          <label>Categoria
+            <select id="task-category"></select>
+          </label>
+          <label>Priorita'
+            <select id="task-priority"></select>
+          </label>
+          <label>Stato
+            <select id="task-status"></select>
+          </label>
+          <label>Ricorrenza
+            <select id="task-recurrence"></select>
+          </label>
+        </div>
+        <label>Nota
+          <textarea id="task-note" rows="3"></textarea>
+        </label>
+      </details>
       <div class="modal-actions">
         <button class="ghost" type="button" data-close-dialog>Annulla</button>
         <button class="primary" type="submit">Salva</button>

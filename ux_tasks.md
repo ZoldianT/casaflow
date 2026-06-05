@@ -7,7 +7,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 - [ ] Trasformare "Oggi" in una dashboard quotidiana piu' completa, con blocchi sintetici per task di oggi, spesa urgente, bucato da non dimenticare e reset serale.
 - [ ] Ridurre la navigazione principale e introdurre una sezione "Pianifica" che raccolga le viste Domani e Settimana, evitando sovrapposizioni mentali tra le due.
 - [x] Aggiungere un quick add contestuale: se l'utente aggiunge da Oggi il task nasce per oggi, da Domani nasce per domani, da Pianifica nasce "quando possibile".
-- [ ] Semplificare il form di creazione task mostrando subito solo titolo, scadenza semplice e assegnatario, con opzioni avanzate espandibili per categoria, priorita', stato e ricorrenza.
+- [x] Semplificare il form di creazione task mostrando subito solo titolo, scadenza semplice e assegnatario, con opzioni avanzate espandibili per categoria, priorita', stato e ricorrenza.
 - [x] Rendere la modalita' Sopravvivenza piu' esplicita come stato globale o come filtro locale chiaramente indicato, con un banner o indicatore visibile quando e' attiva.
 - [x] Convertire il flusso "Pacchetto spesa" in un'azione piu' naturale, ad esempio "Sto andando a fare la spesa", mostrando i dettagli solo dopo il click.
 - [ ] Sincronizzare subito ogni azione utente sul server remoto e aggiornare l'interfaccia con stato chiaro di salvataggio, errore o conferma.
@@ -19,7 +19,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 
 - [x] Correggere tutti i problemi di encoding nei file e nei testi UI, ad esempio testi come "Chi puo" o simboli di separazione/chiusura/aggiornamento mostrati male, per evitare label rotte e possibili errori di salvataggio.
 - [x] Allineare i valori frontend e database per campi con accenti o apostrofi, in particolare il valore "Chi puo", cosi' i vincoli dello schema non rifiutano dati validi.
-- [ ] Evitare che un task normale creato senza data sembri sparire: applicare default coerenti o indicare chiaramente dove verra' mostrato.
+- [x] Evitare che un task normale creato senza data sembri sparire: applicare default coerenti o indicare chiaramente dove verra' mostrato.
 - [x] Proteggere la chiusura della spesa: se non tutti gli articoli sono spuntati, chiedere conferma o impedire la chiusura automatica.
 - [x] Chiarire il pulsante Reset nella sezione reset casa, sostituendo "Resetta" con un testo meno ambiguo come "Ricomincia checklist".
 - [x] Rendere piu' esplicito il pulsante "Avanza" nel bucato, indicando lo stato successivo reale.
@@ -28,7 +28,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 
 ## Nice to have
 
-- [ ] Aggiungere microcopy piu' domestico nelle azioni principali, mantenendo tono anti-colpa e anti-gestionale.
+- [x] Aggiungere microcopy piu' domestico nelle azioni principali, mantenendo tono anti-colpa e anti-gestionale.
 - [x] Aggiungere badge numerici nella navigazione per indicare quante cose richiedono attenzione in Oggi, Spesa, Bucato e Reset.
 - [ ] Migliorare la leggibilita' della bottom nav su mobile, specialmente se resta con molte voci.
 - [ ] Evidenziare in modo morbido gli elementi essenziali senza usare colori allarmistici.

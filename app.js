@@ -311,16 +311,16 @@
           <span class="badge">${escapeHtml(task.category)}</span>
           <span class="badge">${escapeHtml(task.assigned_to)}</span>
           <span class="badge ${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span>
-          ${task.due_date ? `<span class="badge">${formatShortDate(task.due_date)}</span>` : ""}
+          <span class="badge">${taskDateLabel(task)}</span>
           ${task.recurrence !== "Nessuna" ? `<span class="badge">${escapeHtml(task.recurrence)}</span>` : ""}
         </div>
         ${task.note ? `<p class="note">${escapeHtml(task.note)}</p>` : ""}
         ${trip ? renderShoppingTripChecklist(trip) : ""}
         <div class="card-actions">
-          <button class="primary" type="button" data-action="task-done" data-id="${task.id}">Fatto</button>
-          <button class="ghost" type="button" data-action="task-tomorrow" data-id="${task.id}">Domani</button>
+          <button class="primary" type="button" data-action="task-done" data-id="${task.id}">Segna fatto</button>
+          <button class="ghost" type="button" data-action="task-tomorrow" data-id="${task.id}">Sposta a domani</button>
           <button class="ghost" type="button" data-action="task-edit" data-id="${task.id}">Modifica</button>
-          <button class="ghost" type="button" data-action="task-archive" data-id="${task.id}">Archivia</button>
+          <button class="ghost" type="button" data-action="task-archive" data-id="${task.id}">Via dalla lista</button>
         </div>
       </article>
     `;
@@ -344,7 +344,7 @@
             </div>
             ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
             <div class="card-actions">
-              <button class="primary" type="button" data-action="shopping-toggle" data-id="${item.id}">${item.status === "Comprato" ? "Ripristina" : "Comprato"}</button>
+              <button class="primary" type="button" data-action="shopping-toggle" data-id="${item.id}">${item.status === "Comprato" ? "Rimetti in lista" : "Preso"}</button>
               <button class="ghost" type="button" data-action="shopping-delete" data-id="${item.id}">Elimina</button>
             </div>
           </article>
@@ -362,7 +362,7 @@
         </div>
         ${renderShoppingTripChecklist(trip)}
         <div class="card-actions">
-          <button class="primary" type="button" data-action="trip-complete" data-id="${trip.id}">Chiudi spesa</button>
+          <button class="primary" type="button" data-action="trip-complete" data-id="${trip.id}">Spesa finita</button>
         </div>
       </article>
     `;
@@ -829,6 +829,7 @@
     $("#task-due-date").value = task && task.due_date ? task.due_date : defaultDueDateForActiveView();
     $("#task-status").value = task ? task.status : "Da fare";
     $("#task-recurrence").value = task ? task.recurrence : "Nessuna";
+    $(".advanced-fields").open = Boolean(task && (task.note || task.category !== "Altro" || task.priority !== "Normale" || task.status !== "Da fare" || task.recurrence !== "Nessuna"));
     $("#task-dialog").showModal();
   }
 
@@ -900,6 +901,10 @@
 
   function formatShortDate(value) {
     return new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(parseDate(value));
+  }
+
+  function taskDateLabel(task) {
+    return task.due_date ? formatShortDate(task.due_date) : "Quando possibile";
   }
 
   function empty(text) {

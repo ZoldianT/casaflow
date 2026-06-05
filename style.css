@@ -184,6 +184,29 @@ textarea {
   text-align: left;
 }
 
+.advanced-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.advanced-fields summary {
+  min-height: 44px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--ink);
+  padding: 12px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.advanced-fields[open] {
+  gap: 14px;
+}
+
+.advanced-fields[open] summary {
+  margin-bottom: 12px;
+}
+
 .error,
 .error-banner,
 .toast {

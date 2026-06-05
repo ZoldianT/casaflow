@@ -1,0 +1,612 @@
+(function () {
+  "use strict";
+
+  const TASK_CATEGORIES = ["Bimba", "Spesa", "Bucato", "Cucina", "Pulizie", "Casa / lavoretti", "Amministrativo", "Altro"];
+  const SHOPPING_CATEGORIES = ["Bimba", "Alimentari", "Casa", "Farmacia", "Igiene", "Altro"];
+  const ASSIGNEES = ["Peppe", "Moglie", "Chi può"];
+  const PRIORITIES = ["Essenziale", "Normale", "Bassa"];
+  const TASK_STATUSES = ["Da fare", "Fatto", "Archiviato"];
+  const RECURRENCES = ["Nessuna", "Giornaliera", "Settimanale", "Ogni 2 settimane", "Mensile"];
+  const LAUNDRY_STATUSES = ["Da lavare", "Lavatrice da avviare", "Da stendere / asciugare", "Da piegare", "Da mettere a posto", "Fatto"];
+  const RESET_ITEMS = [
+    "cucina libera",
+    "tavolo sgombro",
+    "giochi bimba raccolti",
+    "vestiti nel cesto",
+    "lavastoviglie caricata o svuotata",
+    "cose per domani preparate"
+  ];
+  const SURVIVAL_RESET_ITEMS = ["cucina libera", "giochi bimba raccolti", "cose per domani preparate"];
+
+  const state = {
+    client: null,
+    session: null,
+    member: null,
+    householdId: null,
+    activeView: "today",
+    survival: false,
+    tasks: [],
+    shopping: [],
+    laundry: [],
+    reset: []
+  };
+
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+
+  document.addEventListener("DOMContentLoaded", init);
+
+  async function init() {
+    fillSelects();
+    bindEvents();
+    $("#today-label").textContent = formatLongDate(new Date());
+
+    const config = window.CASAFLOW_CONFIG;
+    if (!config || !config.supabaseUrl || !config.supabaseAnonKey || config.supabaseUrl.includes("INSERIRE")) {
+      showLoginError("Configura config.js partendo da config.example.js.");
+      return;
+    }
+    if (!window.supabase) {
+      showLoginError("Non riesco a caricare Supabase. Controlla la connessione.");
+      return;
+    }
+
+    state.client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    const { data, error } = await state.client.auth.getSession();
+    if (error) {
+      showLoginError("Sessione scaduta. Accedi di nuovo.");
+      return;
+    }
+
+    if (data.session) {
+      state.session = data.session;
+      await enterApp();
+    }
+  }
+
+  function bindEvents() {
+    $("#login-form").addEventListener("submit", login);
+    $("#logout-btn").addEventListener("click", logout);
+    $("#refresh-btn").addEventListener("click", loadAll);
+    $("#survival-toggle").addEventListener("change", (event) => {
+      state.survival = event.target.checked;
+      render();
+    });
+
+    $$(".nav-btn").forEach((button) => {
+      button.addEventListener("click", () => setView(button.dataset.target));
+    });
+
+    $("#add-button").addEventListener("click", () => $("#add-dialog").showModal());
+    $$("[data-close-dialog]").forEach((button) => {
+      button.addEventListener("click", () => button.closest("dialog").close());
+    });
+    $("[data-open-task]").addEventListener("click", () => {
+      $("#add-dialog").close();
+      openTaskDialog();
+    });
+    $("[data-focus-shopping]").addEventListener("click", () => {
+      $("#add-dialog").close();
+      setView("shopping");
+      $("#shopping-title").focus();
+    });
+    $("[data-focus-laundry]").addEventListener("click", () => {
+      $("#add-dialog").close();
+      setView("laundry");
+      $("#laundry-title").focus();
+    });
+
+    $("#task-form").addEventListener("submit", saveTask);
+    $("#shopping-quick-form").addEventListener("submit", addShoppingItem);
+    $("#laundry-quick-form").addEventListener("submit", addLaundryItem);
+    $("#reset-today-btn").addEventListener("click", resetTodayChecklist);
+
+    document.addEventListener("click", handleActionClick);
+    document.addEventListener("change", handleCheckChange);
+  }
+
+  function fillSelects() {
+    fillSelect("#task-category", TASK_CATEGORIES);
+    fillSelect("#task-assigned", ASSIGNEES);
+    fillSelect("#task-priority", PRIORITIES);
+    fillSelect("#task-status", TASK_STATUSES);
+    fillSelect("#task-recurrence", RECURRENCES);
+    fillSelect("#shopping-category", SHOPPING_CATEGORIES);
+    fillSelect("#laundry-assigned", ASSIGNEES);
+    $("#laundry-assigned").value = "Chi può";
+  }
+
+  function fillSelect(selector, values) {
+    const select = $(selector);
+    select.innerHTML = values.map((value) => `<option value="${escapeAttr(value)}">${escapeHtml(value)}</option>`).join("");
+  }
+
+  async function login(event) {
+    event.preventDefault();
+    hideLoginError();
+    const email = $("#login-email").value.trim();
+    const redirectTo = window.location.href.split("#")[0];
+    const { error } = await state.client.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectTo,
+        shouldCreateUser: false
+      }
+    });
+    if (error) {
+      showLoginError("Non riesco a inviare il link. Controlla l'email.");
+      return;
+    }
+    showLoginError("Ti ho inviato il link di accesso. Aprilo da questa email.");
+  }
+
+  async function logout() {
+    await state.client.auth.signOut();
+    state.session = null;
+    state.member = null;
+    state.householdId = null;
+    $("#app-view").hidden = true;
+    $("#login-view").hidden = false;
+  }
+
+  async function enterApp() {
+    try {
+      await loadMember();
+      $("#login-view").hidden = true;
+      $("#app-view").hidden = false;
+      $("#member-label").textContent = `${state.member.display_name} · casa condivisa`;
+      setView("today");
+      await loadAll();
+    } catch (error) {
+      $("#app-view").hidden = true;
+      $("#login-view").hidden = false;
+      showLoginError(error.message || "Errore nel caricamento dei dati.");
+    }
+  }
+
+  async function loadMember() {
+    const { data, error } = await state.client
+      .from("household_members")
+      .select("id, household_id, display_name")
+      .eq("user_id", state.session.user.id)
+      .maybeSingle();
+    if (error) throw new Error("Errore nel caricamento dei dati.");
+    if (!data) throw new Error("Questo account non e' associato alla casa.");
+    state.member = data;
+    state.householdId = data.household_id;
+  }
+
+  async function loadAll() {
+    if (!state.householdId) return;
+    setGlobalError("");
+    try {
+      await ensureTodayChecklist();
+      const [tasks, shopping, laundry, reset] = await Promise.all([
+        state.client.from("tasks").select("*").eq("household_id", state.householdId).neq("status", "Archiviato").order("created_at", { ascending: false }),
+        state.client.from("shopping_items").select("*").eq("household_id", state.householdId).order("created_at", { ascending: false }),
+        state.client.from("laundry_items").select("*").eq("household_id", state.householdId).neq("laundry_status", "Fatto").order("created_at", { ascending: false }),
+        state.client.from("reset_checklist").select("*").eq("household_id", state.householdId).eq("reset_date", todayKey()).order("created_at", { ascending: true })
+      ]);
+      [tasks, shopping, laundry, reset].forEach((result) => {
+        if (result.error) throw result.error;
+      });
+      state.tasks = tasks.data || [];
+      state.shopping = shopping.data || [];
+      state.laundry = laundry.data || [];
+      state.reset = reset.data || [];
+      render();
+    } catch (error) {
+      setGlobalError("Errore nel caricamento dei dati.");
+    }
+  }
+
+  async function ensureTodayChecklist() {
+    const { data, error } = await state.client
+      .from("reset_checklist")
+      .select("id")
+      .eq("household_id", state.householdId)
+      .eq("reset_date", todayKey())
+      .limit(1);
+    if (error) throw error;
+    if (data.length > 0) return;
+    const rows = RESET_ITEMS.map((label) => ({
+      household_id: state.householdId,
+      reset_date: todayKey(),
+      label,
+      is_done: false
+    }));
+    const { error: insertError } = await state.client.from("reset_checklist").insert(rows);
+    if (insertError) throw insertError;
+  }
+
+  function setView(view) {
+    state.activeView = view;
+    $$(".view").forEach((section) => section.classList.toggle("active-view", section.dataset.view === view));
+    $$(".nav-btn").forEach((button) => button.classList.toggle("active", button.dataset.target === view));
+    render();
+  }
+
+  function render() {
+    renderToday();
+    renderWeek();
+    renderShopping();
+    renderLaundry();
+    renderReset();
+  }
+
+  function renderToday() {
+    let tasks = state.tasks.filter((task) => task.status === "Da fare" && (task.due_date === todayKey() || (!task.due_date && task.priority === "Essenziale")));
+    if (state.survival) tasks = tasks.filter((task) => task.priority === "Essenziale");
+    tasks.sort(sortByPriority);
+    $("#today-list").innerHTML = tasks.length
+      ? tasks.map(renderTaskCard).join("")
+      : empty("Per oggi non c'e' nulla di urgente. Respira.");
+
+    const urgentShopping = state.shopping.filter((item) => item.status === "Da comprare" && ["Bimba", "Farmacia"].includes(item.category));
+    const box = $("#today-survival-shopping");
+    if (state.survival && urgentShopping.length) {
+      box.hidden = false;
+      box.innerHTML = `<strong>Da tenere a mente</strong>${urgentShopping.map((item) => `<p>${escapeHtml(item.title)} · ${escapeHtml(item.category)}</p>`).join("")}`;
+    } else {
+      box.hidden = true;
+      box.innerHTML = "";
+    }
+  }
+
+  function renderWeek() {
+    const today = parseDate(todayKey());
+    const tomorrow = addDays(today, 1);
+    const weekEnd = addDays(today, 7);
+    const todo = state.tasks.filter((task) => task.status === "Da fare");
+    const tomorrowTasks = todo.filter((task) => task.due_date === dateKey(tomorrow)).sort(sortByPriority);
+    const nextTasks = todo.filter((task) => task.due_date && parseDate(task.due_date) > tomorrow && parseDate(task.due_date) <= weekEnd).sort(sortByDateThenPriority);
+    const somedayTasks = todo.filter((task) => !task.due_date && task.priority !== "Essenziale").sort(sortByPriority);
+    const html = [
+      renderTaskGroup("Domani", tomorrowTasks),
+      renderTaskGroup("Prossimi giorni", nextTasks),
+      renderTaskGroup("Quando possibile", somedayTasks)
+    ].join("");
+    $("#week-list").innerHTML = html.includes("task-card") ? html : empty("Nessun lavoretto in sospeso per questa settimana.");
+  }
+
+  function renderTaskGroup(title, tasks) {
+    if (!tasks.length) return "";
+    return `<section class="group"><h3>${title}</h3><div class="group-items">${tasks.map(renderTaskCard).join("")}</div></section>`;
+  }
+
+  function renderTaskCard(task) {
+    return `
+      <article class="card task-card" data-id="${task.id}">
+        <h3>${escapeHtml(task.title)}</h3>
+        <div class="meta">
+          <span class="badge">${escapeHtml(task.category)}</span>
+          <span class="badge">${escapeHtml(task.assigned_to)}</span>
+          <span class="badge ${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span>
+          ${task.due_date ? `<span class="badge">${formatShortDate(task.due_date)}</span>` : ""}
+          ${task.recurrence !== "Nessuna" ? `<span class="badge">${escapeHtml(task.recurrence)}</span>` : ""}
+        </div>
+        ${task.note ? `<p class="note">${escapeHtml(task.note)}</p>` : ""}
+        <div class="card-actions">
+          <button class="primary" type="button" data-action="task-done" data-id="${task.id}">Fatto</button>
+          <button class="ghost" type="button" data-action="task-tomorrow" data-id="${task.id}">Domani</button>
+          <button class="ghost" type="button" data-action="task-edit" data-id="${task.id}">Modifica</button>
+          <button class="ghost" type="button" data-action="task-archive" data-id="${task.id}">Archivia</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderShopping() {
+    const items = [...state.shopping].sort((a, b) => (a.status === b.status ? 0 : a.status === "Da comprare" ? -1 : 1));
+    $("#shopping-list").innerHTML = items.length
+      ? items.map((item) => `
+          <article class="card" data-id="${item.id}">
+            <h3>${escapeHtml(item.title)}</h3>
+            <div class="meta">
+              <span class="badge">${escapeHtml(item.category)}</span>
+              <span class="badge">${escapeHtml(item.status)}</span>
+            </div>
+            ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
+            <div class="card-actions">
+              <button class="primary" type="button" data-action="shopping-toggle" data-id="${item.id}">${item.status === "Comprato" ? "Ripristina" : "Comprato"}</button>
+              <button class="ghost" type="button" data-action="shopping-delete" data-id="${item.id}">Elimina</button>
+            </div>
+          </article>
+        `).join("")
+      : empty("La lista e' vuota. Per ora non manca niente.");
+  }
+
+  function renderLaundry() {
+    const html = LAUNDRY_STATUSES.filter((status) => status !== "Fatto").map((status) => {
+      const items = state.laundry.filter((item) => item.laundry_status === status);
+      if (!items.length) return "";
+      return `
+        <section class="group">
+          <h3>${escapeHtml(status)}</h3>
+          <div class="group-items">
+            ${items.map((item) => `
+              <article class="card" data-id="${item.id}">
+                <h3>${escapeHtml(item.title)}</h3>
+                <div class="meta"><span class="badge">${escapeHtml(item.assigned_to)}</span></div>
+                ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
+                <div class="card-actions">
+                  <button class="primary" type="button" data-action="laundry-next" data-id="${item.id}">Avanza</button>
+                  <button class="ghost" type="button" data-action="laundry-delete" data-id="${item.id}">Elimina</button>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      `;
+    }).join("");
+    $("#laundry-list").innerHTML = html || empty("Nessun bucato registrato.");
+  }
+
+  function renderReset() {
+    const visible = state.survival ? state.reset.filter((item) => SURVIVAL_RESET_ITEMS.includes(item.label)) : state.reset;
+    $("#reset-list").innerHTML = visible.length
+      ? visible.map((item) => `
+          <label class="check-row ${item.is_done ? "is-done" : ""}">
+            <input type="checkbox" data-action="reset-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
+            <span>${escapeHtml(item.label)}</span>
+          </label>
+        `).join("")
+      : empty("Il reset di oggi e' pronto appena serve.");
+  }
+
+  async function saveTask(event) {
+    event.preventDefault();
+    const id = $("#task-id").value;
+    const payload = {
+      household_id: state.householdId,
+      title: $("#task-title").value.trim(),
+      note: $("#task-note").value.trim() || null,
+      category: $("#task-category").value,
+      assigned_to: $("#task-assigned").value,
+      priority: $("#task-priority").value,
+      due_date: $("#task-due-date").value || null,
+      status: $("#task-status").value,
+      recurrence: $("#task-recurrence").value,
+      created_by: state.session.user.id
+    };
+    if (!payload.title) return showToast("Inserisci un titolo.");
+    const request = id
+      ? state.client.from("tasks").update(payload).eq("id", id)
+      : state.client.from("tasks").insert(payload);
+    const { error } = await request;
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    $("#task-dialog").close();
+    await loadAll();
+  }
+
+  async function addShoppingItem(event) {
+    event.preventDefault();
+    const title = $("#shopping-title").value.trim();
+    if (!title) return showToast("Inserisci cosa manca.");
+    const { error } = await state.client.from("shopping_items").insert({
+      household_id: state.householdId,
+      title,
+      category: $("#shopping-category").value,
+      status: "Da comprare",
+      created_by: state.session.user.id
+    });
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    $("#shopping-title").value = "";
+    await loadAll();
+  }
+
+  async function addLaundryItem(event) {
+    event.preventDefault();
+    const title = $("#laundry-title").value.trim();
+    if (!title) return showToast("Inserisci un titolo per il bucato.");
+    const { error } = await state.client.from("laundry_items").insert({
+      household_id: state.householdId,
+      title,
+      assigned_to: $("#laundry-assigned").value,
+      laundry_status: "Da lavare",
+      created_by: state.session.user.id
+    });
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    $("#laundry-title").value = "";
+    await loadAll();
+  }
+
+  async function handleActionClick(event) {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const action = button.dataset.action;
+    const id = button.dataset.id;
+    if (action === "task-done") return completeTask(id);
+    if (action === "task-tomorrow") return updateTask(id, { due_date: dateKey(addDays(new Date(), 1)), status: "Da fare", completed_at: null });
+    if (action === "task-edit") return openTaskDialog(state.tasks.find((task) => task.id === id));
+    if (action === "task-archive") return updateTask(id, { status: "Archiviato" });
+    if (action === "shopping-toggle") return toggleShopping(id);
+    if (action === "shopping-delete") return deleteRow("shopping_items", id);
+    if (action === "laundry-next") return advanceLaundry(id);
+    if (action === "laundry-delete") return deleteRow("laundry_items", id);
+  }
+
+  async function handleCheckChange(event) {
+    if (event.target.dataset.action !== "reset-toggle") return;
+    const { error } = await state.client.from("reset_checklist").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    await loadAll();
+  }
+
+  async function completeTask(id) {
+    const task = state.tasks.find((item) => item.id === id);
+    if (!task) return;
+    const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: new Date().toISOString() }).eq("id", id);
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (task.recurrence !== "Nessuna") {
+      const nextDate = nextRecurrenceDate(task.due_date || todayKey(), task.recurrence);
+      const copy = {
+        household_id: state.householdId,
+        title: task.title,
+        note: task.note,
+        category: task.category,
+        assigned_to: task.assigned_to,
+        priority: task.priority,
+        due_date: nextDate,
+        status: "Da fare",
+        recurrence: task.recurrence,
+        created_by: state.session.user.id
+      };
+      const { error: copyError } = await state.client.from("tasks").insert(copy);
+      if (copyError) return showToast("Task completato, ma non riesco a creare la prossima ricorrenza.");
+    }
+    await loadAll();
+  }
+
+  async function updateTask(id, payload) {
+    const { error } = await state.client.from("tasks").update(payload).eq("id", id);
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    await loadAll();
+  }
+
+  async function toggleShopping(id) {
+    const item = state.shopping.find((row) => row.id === id);
+    if (!item) return;
+    const bought = item.status !== "Comprato";
+    const { error } = await state.client.from("shopping_items").update({
+      status: bought ? "Comprato" : "Da comprare",
+      bought_at: bought ? new Date().toISOString() : null
+    }).eq("id", id);
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    await loadAll();
+  }
+
+  async function advanceLaundry(id) {
+    const item = state.laundry.find((row) => row.id === id);
+    if (!item) return;
+    const next = LAUNDRY_STATUSES[LAUNDRY_STATUSES.indexOf(item.laundry_status) + 1] || "Fatto";
+    const payload = { laundry_status: next, completed_at: next === "Fatto" ? new Date().toISOString() : null };
+    const { error } = await state.client.from("laundry_items").update(payload).eq("id", id);
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    await loadAll();
+  }
+
+  async function deleteRow(table, id) {
+    const { error } = await state.client.from(table).delete().eq("id", id);
+    if (error) return showToast("Non riesco a eliminare. Controlla la connessione.");
+    await loadAll();
+  }
+
+  async function resetTodayChecklist() {
+    const { error } = await state.client
+      .from("reset_checklist")
+      .update({ is_done: false })
+      .eq("household_id", state.householdId)
+      .eq("reset_date", todayKey());
+    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    await loadAll();
+  }
+
+  function openTaskDialog(task) {
+    $("#task-dialog-title").textContent = task ? "Modifica task" : "Aggiungi task";
+    $("#task-id").value = task ? task.id : "";
+    $("#task-title").value = task ? task.title : "";
+    $("#task-note").value = task && task.note ? task.note : "";
+    $("#task-category").value = task ? task.category : "Altro";
+    $("#task-assigned").value = task ? task.assigned_to : "Chi può";
+    $("#task-priority").value = task ? task.priority : "Normale";
+    $("#task-due-date").value = task && task.due_date ? task.due_date : "";
+    $("#task-status").value = task ? task.status : "Da fare";
+    $("#task-recurrence").value = task ? task.recurrence : "Nessuna";
+    $("#task-dialog").showModal();
+  }
+
+  function sortByPriority(a, b) {
+    return PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority) || new Date(b.created_at) - new Date(a.created_at);
+  }
+
+  function sortByDateThenPriority(a, b) {
+    return parseDate(a.due_date) - parseDate(b.due_date) || sortByPriority(a, b);
+  }
+
+  function nextRecurrenceDate(fromDate, recurrence) {
+    const date = parseDate(fromDate);
+    if (recurrence === "Giornaliera") return dateKey(addDays(date, 1));
+    if (recurrence === "Settimanale") return dateKey(addDays(date, 7));
+    if (recurrence === "Ogni 2 settimane") return dateKey(addDays(date, 14));
+    if (recurrence === "Mensile") {
+      date.setMonth(date.getMonth() + 1);
+      return dateKey(date);
+    }
+    return null;
+  }
+
+  function todayKey() {
+    return dateKey(new Date());
+  }
+
+  function dateKey(date) {
+    const local = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const year = local.getFullYear();
+    const month = String(local.getMonth() + 1).padStart(2, "0");
+    const day = String(local.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseDate(value) {
+    const parts = value.split("-").map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  function addDays(date, days) {
+    const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    copy.setDate(copy.getDate() + days);
+    return copy;
+  }
+
+  function formatLongDate(date) {
+    return new Intl.DateTimeFormat("it-IT", { weekday: "long", day: "numeric", month: "long" }).format(date);
+  }
+
+  function formatShortDate(value) {
+    return new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(parseDate(value));
+  }
+
+  function empty(text) {
+    return `<div class="empty">${escapeHtml(text)}</div>`;
+  }
+
+  function setGlobalError(message) {
+    const box = $("#global-error");
+    box.textContent = message;
+    box.hidden = !message;
+  }
+
+  function showLoginError(message) {
+    const box = $("#login-error");
+    box.textContent = message;
+    box.hidden = false;
+  }
+
+  function hideLoginError() {
+    $("#login-error").hidden = true;
+  }
+
+  function showToast(message) {
+    const toast = $("#toast");
+    toast.textContent = message;
+    toast.hidden = false;
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => {
+      toast.hidden = true;
+    }, 3500);
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value);
+  }
+})();

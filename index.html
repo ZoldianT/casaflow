@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CasaFlow</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <main id="login-view" class="login-shell">
+    <section class="login-panel">
+      <p class="eyebrow">Casa condivisa</p>
+      <h1>CasaFlow</h1>
+      <p class="soft">Una piccola cabina di regia per casa, bimba e cose da non dimenticare.</p>
+      <form id="login-form" class="stack">
+        <label>Email
+          <input id="login-email" type="email" autocomplete="email" required>
+        </label>
+        <button class="primary" type="submit">Mandami il link</button>
+      </form>
+      <p id="login-error" class="error" hidden></p>
+      <p class="hint">Ti arriva un link via email. Niente password da ricordare.</p>
+    </section>
+  </main>
+
+  <div id="app-view" class="app-shell" hidden>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow" id="member-label">CasaFlow</p>
+        <h1>CasaFlow</h1>
+        <p id="today-label" class="soft"></p>
+      </div>
+      <div class="header-actions">
+        <button id="refresh-btn" class="icon-btn" type="button" title="Aggiorna" aria-label="Aggiorna">↻</button>
+        <button id="logout-btn" class="ghost" type="button">Esci</button>
+      </div>
+    </header>
+
+    <section id="global-error" class="error-banner" hidden></section>
+
+    <section id="today-section" class="view active-view" data-view="today">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow">Oggi</p>
+          <h2>Cose per oggi</h2>
+        </div>
+        <label class="survival-toggle">
+          <input id="survival-toggle" type="checkbox">
+          <span>Sopravvivenza</span>
+        </label>
+      </div>
+      <div id="today-survival-shopping" class="quiet-list" hidden></div>
+      <div id="today-list" class="card-list"></div>
+    </section>
+
+    <section id="week-section" class="view" data-view="week">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow">Settimana</p>
+          <h2>Quando possibile</h2>
+        </div>
+      </div>
+      <div id="week-list" class="group-list"></div>
+    </section>
+
+    <section id="shopping-section" class="view" data-view="shopping">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow">Spesa</p>
+          <h2>Mancano cose</h2>
+        </div>
+      </div>
+      <form id="shopping-quick-form" class="quick-form">
+        <input id="shopping-title" type="text" placeholder="Aggiungi una cosa" required>
+        <select id="shopping-category" aria-label="Categoria spesa"></select>
+        <button class="primary" type="submit">Aggiungi</button>
+      </form>
+      <div id="shopping-list" class="card-list"></div>
+    </section>
+
+    <section id="laundry-section" class="view" data-view="laundry">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow">Bucato</p>
+          <h2>Giro lavatrici</h2>
+        </div>
+      </div>
+      <form id="laundry-quick-form" class="quick-form">
+        <input id="laundry-title" type="text" placeholder="Es. Scuri, bimba, asciugamani" required>
+        <select id="laundry-assigned" aria-label="Assegnatario bucato"></select>
+        <button class="primary" type="submit">Aggiungi</button>
+      </form>
+      <div id="laundry-list" class="group-list"></div>
+    </section>
+
+    <section id="reset-section" class="view" data-view="reset">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow">Reset</p>
+          <h2>Reset casa</h2>
+        </div>
+        <button id="reset-today-btn" class="ghost" type="button">Resetta</button>
+      </div>
+      <div id="reset-list" class="check-list"></div>
+    </section>
+
+    <button id="add-button" class="fab" type="button">+ Aggiungi</button>
+
+    <nav class="bottom-nav" aria-label="Navigazione principale">
+      <button class="nav-btn active" type="button" data-target="today">Oggi</button>
+      <button class="nav-btn" type="button" data-target="week">Settimana</button>
+      <button class="nav-btn" type="button" data-target="shopping">Spesa</button>
+      <button class="nav-btn" type="button" data-target="laundry">Bucato</button>
+      <button class="nav-btn" type="button" data-target="reset">Reset</button>
+    </nav>
+  </div>
+
+  <dialog id="task-dialog" class="modal">
+    <form id="task-form" class="stack" method="dialog">
+      <div class="modal-head">
+        <h2 id="task-dialog-title">Aggiungi task</h2>
+        <button class="icon-btn" value="cancel" type="button" data-close-dialog>×</button>
+      </div>
+      <input id="task-id" type="hidden">
+      <label>Titolo
+        <input id="task-title" type="text" required>
+      </label>
+      <label>Nota
+        <textarea id="task-note" rows="3"></textarea>
+      </label>
+      <div class="form-grid">
+        <label>Categoria
+          <select id="task-category"></select>
+        </label>
+        <label>Assegnato a
+          <select id="task-assigned"></select>
+        </label>
+        <label>Priorita'
+          <select id="task-priority"></select>
+        </label>
+        <label>Data
+          <input id="task-due-date" type="date">
+        </label>
+        <label>Stato
+          <select id="task-status"></select>
+        </label>
+        <label>Ricorrenza
+          <select id="task-recurrence"></select>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost" type="button" data-close-dialog>Annulla</button>
+        <button class="primary" type="submit">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="add-dialog" class="modal">
+    <div class="stack">
+      <div class="modal-head">
+        <h2>Aggiungi</h2>
+        <button class="icon-btn" type="button" data-close-dialog>×</button>
+      </div>
+      <button class="choice-btn" type="button" data-open-task>Task</button>
+      <button class="choice-btn" type="button" data-focus-shopping>Articolo spesa</button>
+      <button class="choice-btn" type="button" data-focus-laundry>Elemento bucato</button>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

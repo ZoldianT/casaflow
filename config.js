@@ -1,0 +1,4 @@
+window.CASAFLOW_CONFIG = {
+  supabaseUrl: "https://xidcnbkfurlgujejutus.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpZGNuYmtmdXJsZ3VqZWp1dHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2Mzc5NTAsImV4cCI6MjA5NjIxMzk1MH0.Dy47B1OxWGAMEKxiz6CDi4GkroZ65T9FhBGwtGpMsWw"
+};

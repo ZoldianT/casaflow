@@ -65,6 +65,16 @@
       <div id="week-list" class="group-list"></div>
     </section>
 
+    <section id="tomorrow-section" class="view" data-view="tomorrow">
+      <div class="section-top">
+        <div>
+          <p class="eyebrow">Domani</p>
+          <h2>Prepariamo domani</h2>
+        </div>
+      </div>
+      <div id="tomorrow-list" class="card-list"></div>
+    </section>
+
     <section id="shopping-section" class="view" data-view="shopping">
       <div class="section-top">
         <div>
@@ -77,6 +87,19 @@
         <select id="shopping-category" aria-label="Categoria spesa"></select>
         <button class="primary" type="submit">Aggiungi</button>
       </form>
+      <form id="shopping-pack-form" class="pack-form">
+        <label>Pacchetto
+          <input id="shopping-pack-title" type="text" placeholder="Spesa alimentari">
+        </label>
+        <label>Categoria
+          <select id="shopping-pack-category" aria-label="Categoria da consolidare"></select>
+        </label>
+        <label>Assegna a
+          <select id="shopping-pack-assigned" aria-label="Assegna spesa"></select>
+        </label>
+        <button class="primary" type="submit">Crea task spesa</button>
+      </form>
+      <div id="shopping-trips" class="card-list"></div>
       <div id="shopping-list" class="card-list"></div>
     </section>
 
@@ -110,6 +133,7 @@
 
     <nav class="bottom-nav" aria-label="Navigazione principale">
       <button class="nav-btn active" type="button" data-target="today">Oggi</button>
+      <button class="nav-btn" type="button" data-target="tomorrow">Domani</button>
       <button class="nav-btn" type="button" data-target="week">Settimana</button>
       <button class="nav-btn" type="button" data-target="shopping">Spesa</button>
       <button class="nav-btn" type="button" data-target="laundry">Bucato</button>

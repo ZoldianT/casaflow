@@ -66,6 +66,7 @@ Poi apri l'URL locale indicato dal comando.
 - Oggi: task di oggi e task essenziali senza data.
 - Settimana: domani, prossimi giorni e quando possibile.
 - Spesa: aggiunta rapida, comprato/ripristina, elimina.
+- Spesa consolidata: raggruppa articoli da comprare in un task assegnato con checklist carrello.
 - Bucato: stati a blocchi e pulsante Avanza.
 - Reset casa: checklist giornaliera sincronizzata su Supabase.
 - Modalita' sopravvivenza: filtro UI per task essenziali, spesa Bimba/Farmacia e reset ridotto.

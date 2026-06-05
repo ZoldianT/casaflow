@@ -237,6 +237,16 @@ textarea {
   margin-bottom: 14px;
 }
 
+.pack-form {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff8ed;
+}
+
 .card-list,
 .group-list,
 .check-list {
@@ -321,6 +331,38 @@ textarea {
   gap: 8px;
 }
 
+.trip-items {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.trip-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.trip-item input {
+  width: 22px;
+  min-height: 22px;
+}
+
+.trip-item.is-done span {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.progress-line {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .check-row {
   display: flex;
   align-items: center;
@@ -345,7 +387,7 @@ textarea {
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   padding: 8px max(8px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
   background: rgba(255, 253, 250, 0.96);
@@ -357,7 +399,7 @@ textarea {
   border-radius: 8px;
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -401,6 +443,11 @@ textarea {
 @media (min-width: 620px) {
   .quick-form {
     grid-template-columns: 1fr 180px auto;
+  }
+
+  .pack-form {
+    grid-template-columns: 1fr 170px 150px auto;
+    align-items: end;
   }
 
   .form-grid {

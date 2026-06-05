@@ -27,6 +27,7 @@
     survival: false,
     tasks: [],
     shopping: [],
+    shoppingTrips: [],
     laundry: [],
     reset: []
   };
@@ -98,6 +99,7 @@
 
     $("#task-form").addEventListener("submit", saveTask);
     $("#shopping-quick-form").addEventListener("submit", addShoppingItem);
+    $("#shopping-pack-form").addEventListener("submit", createShoppingTrip);
     $("#laundry-quick-form").addEventListener("submit", addLaundryItem);
     $("#reset-today-btn").addEventListener("click", resetTodayChecklist);
 
@@ -112,8 +114,11 @@
     fillSelect("#task-status", TASK_STATUSES);
     fillSelect("#task-recurrence", RECURRENCES);
     fillSelect("#shopping-category", SHOPPING_CATEGORIES);
+    fillSelect("#shopping-pack-category", ["Tutte", ...SHOPPING_CATEGORIES]);
+    fillSelect("#shopping-pack-assigned", ASSIGNEES);
     fillSelect("#laundry-assigned", ASSIGNEES);
     $("#laundry-assigned").value = "Chi può";
+    $("#shopping-pack-assigned").value = "Chi può";
   }
 
   function fillSelect(selector, values) {
@@ -181,17 +186,22 @@
     setGlobalError("");
     try {
       await ensureTodayChecklist();
-      const [tasks, shopping, laundry, reset] = await Promise.all([
+      const [tasks, shopping, trips, laundry, reset] = await Promise.all([
         state.client.from("tasks").select("*").eq("household_id", state.householdId).neq("status", "Archiviato").order("created_at", { ascending: false }),
         state.client.from("shopping_items").select("*").eq("household_id", state.householdId).order("created_at", { ascending: false }),
+        state.client.from("shopping_trips").select("*, shopping_trip_items(*)").eq("household_id", state.householdId).eq("status", "Da fare").order("created_at", { ascending: false }),
         state.client.from("laundry_items").select("*").eq("household_id", state.householdId).neq("laundry_status", "Fatto").order("created_at", { ascending: false }),
         state.client.from("reset_checklist").select("*").eq("household_id", state.householdId).eq("reset_date", todayKey()).order("created_at", { ascending: true })
       ]);
-      [tasks, shopping, laundry, reset].forEach((result) => {
+      [tasks, shopping, trips, laundry, reset].forEach((result) => {
         if (result.error) throw result.error;
       });
       state.tasks = tasks.data || [];
       state.shopping = shopping.data || [];
+      state.shoppingTrips = (trips.data || []).map((trip) => ({
+        ...trip,
+        shopping_trip_items: [...(trip.shopping_trip_items || [])].sort((a, b) => a.created_at.localeCompare(b.created_at))
+      }));
       state.laundry = laundry.data || [];
       state.reset = reset.data || [];
       render();
@@ -228,6 +238,7 @@
 
   function render() {
     renderToday();
+    renderTomorrow();
     renderWeek();
     renderShopping();
     renderLaundry();
@@ -253,6 +264,14 @@
     }
   }
 
+  function renderTomorrow() {
+    const tomorrow = dateKey(addDays(new Date(), 1));
+    const tasks = state.tasks.filter((task) => task.status === "Da fare" && task.due_date === tomorrow).sort(sortByPriority);
+    $("#tomorrow-list").innerHTML = tasks.length
+      ? tasks.map(renderTaskCard).join("")
+      : empty("Domani e' ancora leggero. Lo prepariamo con calma.");
+  }
+
   function renderWeek() {
     const today = parseDate(todayKey());
     const tomorrow = addDays(today, 1);
@@ -275,6 +294,7 @@
   }
 
   function renderTaskCard(task) {
+    const trip = state.shoppingTrips.find((item) => item.task_id === task.id);
     return `
       <article class="card task-card" data-id="${task.id}">
         <h3>${escapeHtml(task.title)}</h3>
@@ -286,6 +306,7 @@
           ${task.recurrence !== "Nessuna" ? `<span class="badge">${escapeHtml(task.recurrence)}</span>` : ""}
         </div>
         ${task.note ? `<p class="note">${escapeHtml(task.note)}</p>` : ""}
+        ${trip ? renderShoppingTripChecklist(trip) : ""}
         <div class="card-actions">
           <button class="primary" type="button" data-action="task-done" data-id="${task.id}">Fatto</button>
           <button class="ghost" type="button" data-action="task-tomorrow" data-id="${task.id}">Domani</button>
@@ -297,7 +318,13 @@
   }
 
   function renderShopping() {
-    const items = [...state.shopping].sort((a, b) => (a.status === b.status ? 0 : a.status === "Da comprare" ? -1 : 1));
+    const packedIds = activePackedShoppingIds();
+    const items = state.shopping
+      .filter((item) => !packedIds.has(item.id))
+      .sort((a, b) => (a.status === b.status ? 0 : a.status === "Da comprare" ? -1 : 1));
+    $("#shopping-trips").innerHTML = state.shoppingTrips.length
+      ? state.shoppingTrips.map(renderShoppingTripCard).join("")
+      : "";
     $("#shopping-list").innerHTML = items.length
       ? items.map((item) => `
           <article class="card" data-id="${item.id}">
@@ -314,6 +341,38 @@
           </article>
         `).join("")
       : empty("La lista e' vuota. Per ora non manca niente.");
+  }
+
+  function renderShoppingTripCard(trip) {
+    return `
+      <article class="card">
+        <h3>${escapeHtml(trip.title)}</h3>
+        <div class="meta">
+          <span class="badge">Task spesa</span>
+          <span class="badge">${escapeHtml(trip.assigned_to)}</span>
+        </div>
+        ${renderShoppingTripChecklist(trip)}
+        <div class="card-actions">
+          <button class="primary" type="button" data-action="trip-complete" data-id="${trip.id}">Chiudi spesa</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderShoppingTripChecklist(trip) {
+    const items = trip.shopping_trip_items || [];
+    const doneCount = items.filter((item) => item.is_done).length;
+    return `
+      <p class="progress-line">${doneCount}/${items.length} nel carrello</p>
+      <div class="trip-items">
+        ${items.map((item) => `
+          <label class="trip-item ${item.is_done ? "is-done" : ""}">
+            <input type="checkbox" data-action="trip-item-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
+            <span>${escapeHtml(item.title)} · ${escapeHtml(item.category)}</span>
+          </label>
+        `).join("")}
+      </div>
+    `;
   }
 
   function renderLaundry() {
@@ -395,6 +454,70 @@
     await loadAll();
   }
 
+  async function createShoppingTrip(event) {
+    event.preventDefault();
+    const category = $("#shopping-pack-category").value;
+    const assignedTo = $("#shopping-pack-assigned").value;
+    const packedIds = activePackedShoppingIds();
+    const candidates = state.shopping.filter((item) => (
+      item.status === "Da comprare" &&
+      !packedIds.has(item.id) &&
+      (category === "Tutte" || item.category === category)
+    ));
+
+    if (!candidates.length) return showToast("Non ci sono cose da impacchettare per questa categoria.");
+
+    const title = $("#shopping-pack-title").value.trim() || (category === "Tutte" ? "Fare la spesa" : `Spesa ${category.toLowerCase()}`);
+    const { data: task, error: taskError } = await state.client
+      .from("tasks")
+      .insert({
+        household_id: state.householdId,
+        title,
+        note: candidates.map((item) => `- ${item.title}`).join("\n"),
+        category: "Spesa",
+        assigned_to: assignedTo,
+        priority: category === "Bimba" || category === "Farmacia" ? "Essenziale" : "Normale",
+        due_date: todayKey(),
+        status: "Da fare",
+        recurrence: "Nessuna",
+        created_by: state.session.user.id
+      })
+      .select()
+      .single();
+    if (taskError) return showToast("Non riesco a creare il task spesa.");
+
+    const { data: trip, error: tripError } = await state.client
+      .from("shopping_trips")
+      .insert({
+        household_id: state.householdId,
+        task_id: task.id,
+        title,
+        assigned_to: assignedTo,
+        status: "Da fare",
+        created_by: state.session.user.id
+      })
+      .select()
+      .single();
+    if (tripError) return showToast("Task creato, ma non riesco a preparare la lista carrello.");
+
+    const rows = candidates.map((item) => ({
+      household_id: state.householdId,
+      trip_id: trip.id,
+      shopping_item_id: item.id,
+      title: item.title,
+      category: item.category,
+      note: item.note,
+      is_done: false
+    }));
+    const { error: itemsError } = await state.client.from("shopping_trip_items").insert(rows);
+    if (itemsError) return showToast("Non riesco ad aggiungere gli articoli al pacchetto.");
+
+    $("#shopping-pack-title").value = "";
+    showToast("Spesa impacchettata e assegnata.");
+    await loadAll();
+    setView("today");
+  }
+
   async function addLaundryItem(event) {
     event.preventDefault();
     const title = $("#laundry-title").value.trim();
@@ -422,11 +545,18 @@
     if (action === "task-archive") return updateTask(id, { status: "Archiviato" });
     if (action === "shopping-toggle") return toggleShopping(id);
     if (action === "shopping-delete") return deleteRow("shopping_items", id);
+    if (action === "trip-complete") return completeShoppingTrip(id);
     if (action === "laundry-next") return advanceLaundry(id);
     if (action === "laundry-delete") return deleteRow("laundry_items", id);
   }
 
   async function handleCheckChange(event) {
+    if (event.target.dataset.action === "trip-item-toggle") {
+      const { error } = await state.client.from("shopping_trip_items").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
+      if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+      await loadAll();
+      return;
+    }
     if (event.target.dataset.action !== "reset-toggle") return;
     const { error } = await state.client.from("reset_checklist").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
     if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
@@ -434,6 +564,9 @@
   }
 
   async function completeTask(id) {
+    const trip = state.shoppingTrips.find((item) => item.task_id === id);
+    if (trip) return completeShoppingTrip(trip.id);
+
     const task = state.tasks.find((item) => item.id === id);
     if (!task) return;
     const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: new Date().toISOString() }).eq("id", id);
@@ -476,6 +609,42 @@
     await loadAll();
   }
 
+  async function completeShoppingTrip(id) {
+    const trip = state.shoppingTrips.find((item) => item.id === id);
+    if (!trip) return;
+    const now = new Date().toISOString();
+    const sourceIds = (trip.shopping_trip_items || []).map((item) => item.shopping_item_id).filter(Boolean);
+
+    if (sourceIds.length) {
+      const { error: shoppingError } = await state.client
+        .from("shopping_items")
+        .update({ status: "Comprato", bought_at: now })
+        .in("id", sourceIds);
+      if (shoppingError) return showToast("Non riesco a chiudere la spesa.");
+    }
+
+    const { error: itemsError } = await state.client
+      .from("shopping_trip_items")
+      .update({ is_done: true })
+      .eq("trip_id", id);
+    if (itemsError) return showToast("Non riesco a chiudere la spesa.");
+
+    const { error: tripError } = await state.client
+      .from("shopping_trips")
+      .update({ status: "Fatto", completed_at: now })
+      .eq("id", id);
+    if (tripError) return showToast("Non riesco a chiudere la spesa.");
+
+    const { error: taskError } = await state.client
+      .from("tasks")
+      .update({ status: "Fatto", completed_at: now })
+      .eq("id", trip.task_id);
+    if (taskError) return showToast("Spesa chiusa, ma non riesco a completare il task.");
+
+    showToast("Spesa chiusa. Bel colpo.");
+    await loadAll();
+  }
+
   async function advanceLaundry(id) {
     const item = state.laundry.find((row) => row.id === id);
     if (!item) return;
@@ -514,6 +683,16 @@
     $("#task-status").value = task ? task.status : "Da fare";
     $("#task-recurrence").value = task ? task.recurrence : "Nessuna";
     $("#task-dialog").showModal();
+  }
+
+  function activePackedShoppingIds() {
+    const ids = new Set();
+    state.shoppingTrips.forEach((trip) => {
+      (trip.shopping_trip_items || []).forEach((item) => {
+        if (item.shopping_item_id) ids.add(item.shopping_item_id);
+      });
+    });
+    return ids;
   }
 
   function sortByPriority(a, b) {

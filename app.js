@@ -3,7 +3,7 @@
 
   const TASK_CATEGORIES = ["Bimba", "Spesa", "Bucato", "Cucina", "Pulizie", "Casa / lavoretti", "Amministrativo", "Altro"];
   const SHOPPING_CATEGORIES = ["Bimba", "Alimentari", "Casa", "Farmacia", "Igiene", "Altro"];
-  const ASSIGNEES = ["Peppe", "Moglie", "Chi puo"];
+  const ASSIGNEES = ["Peppe", "Lina", "Chi puo"];
   const PRIORITIES = ["Essenziale", "Normale", "Bassa"];
   const TASK_STATUSES = ["Da fare", "Fatto", "Archiviato"];
   const RECURRENCES = ["Nessuna", "Giornaliera", "Settimanale", "Ogni 2 settimane", "Mensile"];

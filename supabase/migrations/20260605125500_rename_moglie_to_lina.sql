@@ -3,20 +3,20 @@ alter table laundry_items drop constraint if exists laundry_assigned_check;
 alter table shopping_trips drop constraint if exists shopping_trips_assigned_check;
 
 update tasks
-set assigned_to = 'Chi puo'
-where assigned_to = U&'Chi pu\00F2';
+set assigned_to = 'Lina'
+where assigned_to = 'Moglie';
 
 update laundry_items
-set assigned_to = 'Chi puo'
-where assigned_to = U&'Chi pu\00F2';
+set assigned_to = 'Lina'
+where assigned_to = 'Moglie';
 
 update shopping_trips
-set assigned_to = 'Chi puo'
-where assigned_to = U&'Chi pu\00F2';
+set assigned_to = 'Lina'
+where assigned_to = 'Moglie';
 
-alter table tasks alter column assigned_to set default 'Chi puo';
-alter table laundry_items alter column assigned_to set default 'Chi puo';
-alter table shopping_trips alter column assigned_to set default 'Chi puo';
+update household_members
+set display_name = 'Lina'
+where display_name = 'Moglie';
 
 alter table tasks
   add constraint tasks_assigned_check

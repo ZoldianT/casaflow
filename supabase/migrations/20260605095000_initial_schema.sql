@@ -31,7 +31,7 @@ create table if not exists tasks (
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
   constraint tasks_category_check check (category in ('Bimba', 'Spesa', 'Bucato', 'Cucina', 'Pulizie', 'Casa / lavoretti', 'Amministrativo', 'Altro')),
-  constraint tasks_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo')),
+  constraint tasks_assigned_check check (assigned_to in ('Peppe', 'Lina', 'Chi puo')),
   constraint tasks_priority_check check (priority in ('Essenziale', 'Normale', 'Bassa')),
   constraint tasks_status_check check (status in ('Da fare', 'Fatto', 'Archiviato')),
   constraint tasks_recurrence_check check (recurrence in ('Nessuna', 'Giornaliera', 'Settimanale', 'Ogni 2 settimane', 'Mensile'))
@@ -64,7 +64,7 @@ create table if not exists laundry_items (
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
   constraint laundry_status_check check (laundry_status in ('Da lavare', 'Lavatrice da avviare', 'Da stendere / asciugare', 'Da piegare', 'Da mettere a posto', 'Fatto')),
-  constraint laundry_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo'))
+  constraint laundry_assigned_check check (assigned_to in ('Peppe', 'Lina', 'Chi puo'))
 );
 
 create table if not exists reset_checklist (
@@ -205,7 +205,7 @@ create policy "Members can delete reset checklist"
 on reset_checklist for delete
 using (is_household_member(household_id));
 
--- Seed manuale dopo aver creato Peppe e Moglie da Supabase Auth.
+-- Seed manuale dopo aver creato Peppe e Lina da Supabase Auth.
 -- 1. Recupera i due id da Authentication > Users.
 -- 2. Esegui e conserva l'id restituito:
 -- insert into households (name) values ('Casa Peppe') returning id;
@@ -213,4 +213,4 @@ using (is_household_member(household_id));
 -- insert into household_members (household_id, user_id, display_name)
 -- values
 --   ('HOUSEHOLD_ID', 'AUTH_USER_ID_PEPPE', 'Peppe'),
---   ('HOUSEHOLD_ID', 'AUTH_USER_ID_MOGLIE', 'Moglie');
+--   ('HOUSEHOLD_ID', 'AUTH_USER_ID_LINA', 'Lina');

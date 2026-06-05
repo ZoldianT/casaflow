@@ -9,7 +9,7 @@ create table if not exists shopping_trips (
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now(),
   completed_at timestamp with time zone,
-  constraint shopping_trips_assigned_check check (assigned_to in ('Peppe', 'Moglie', 'Chi puo')),
+  constraint shopping_trips_assigned_check check (assigned_to in ('Peppe', 'Lina', 'Chi puo')),
   constraint shopping_trips_status_check check (status in ('Da fare', 'Fatto', 'Archiviato'))
 );
 

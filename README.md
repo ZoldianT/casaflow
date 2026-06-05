@@ -15,7 +15,7 @@ L'MVP usa solo HTML, CSS, JavaScript vanilla e Supabase. Non ci sono React, fram
 ## Setup Supabase
 
 1. Crea un progetto Supabase.
-2. In Authentication > Users crea manualmente i due utenti autorizzati: Peppe e Moglie. Per il login magic link non serve impostare una password.
+2. In Authentication > Users crea manualmente i due utenti autorizzati: Peppe e Lina. Per il login magic link non serve impostare una password.
 3. Apri SQL Editor ed esegui tutto il contenuto di `schema.sql`.
 4. Recupera gli `id` dei due utenti da Authentication > Users.
 5. Crea la household e associa i due utenti usando il seed commentato in fondo a `schema.sql`.
@@ -28,7 +28,7 @@ insert into households (name) values ('Casa Peppe') returning id;
 insert into household_members (household_id, user_id, display_name)
 values
   ('HOUSEHOLD_ID', 'AUTH_USER_ID_PEPPE', 'Peppe'),
-  ('HOUSEHOLD_ID', 'AUTH_USER_ID_MOGLIE', 'Moglie');
+  ('HOUSEHOLD_ID', 'AUTH_USER_ID_LINA', 'Lina');
 ```
 
 Le policy RLS permettono lettura e modifica solo agli utenti presenti in `household_members` per quella household.

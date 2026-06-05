@@ -156,11 +156,11 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://xidcnbkfurlgujejutus.supabase.co/storage/v1/object/public/casaflow-app/index.html"
+site_url = "https://zoldiant.github.io/casaflow/"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://xidcnbkfurlgujejutus.supabase.co/storage/v1/object/public/casaflow-app/index.html", "http://localhost:4173/index.html", "http://127.0.0.1:4173/index.html"]
+additional_redirect_urls = ["https://zoldiant.github.io/casaflow/", "https://xidcnbkfurlgujejutus.supabase.co/storage/v1/object/public/casaflow-app/index.html", "http://localhost:4173/index.html", "http://127.0.0.1:4173/index.html"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -374,8 +374,8 @@ allow_dynamic_registration = false
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
-# `per_worker` (default) â€” enables hot reload during local development.
-# `oneshot` â€” fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
+# `per_worker` (default) Ã¢â‚¬â€ enables hot reload during local development.
+# `oneshot` Ã¢â‚¬â€ fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
 policy = "per_worker"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8083
@@ -412,7 +412,4 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
-[functions.casaflow]
-enabled = true
-verify_jwt = false
 

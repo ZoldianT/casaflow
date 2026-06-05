@@ -101,6 +101,7 @@
 
     $("#task-form").addEventListener("submit", saveTask);
     $("#shopping-quick-form").addEventListener("submit", addShoppingItem);
+    $("#start-shopping-trip-btn").addEventListener("click", showShoppingTripForm);
     $("#shopping-pack-form").addEventListener("submit", createShoppingTrip);
     $("#laundry-quick-form").addEventListener("submit", addLaundryItem);
     $("#reset-today-btn").addEventListener("click", resetTodayChecklist);
@@ -249,6 +250,7 @@
     renderShopping();
     renderLaundry();
     renderReset();
+    renderNavBadges();
   }
 
   function renderToday() {
@@ -369,14 +371,25 @@
   function renderShoppingTripChecklist(trip) {
     const items = trip.shopping_trip_items || [];
     const doneCount = items.filter((item) => item.is_done).length;
+    const groupedItems = SHOPPING_CATEGORIES
+      .map((category) => ({
+        category,
+        items: items.filter((item) => item.category === category)
+      }))
+      .filter((group) => group.items.length);
     return `
       <p class="progress-line">${doneCount}/${items.length} nel carrello</p>
       <div class="trip-items">
-        ${items.map((item) => `
-          <label class="trip-item ${item.is_done ? "is-done" : ""}">
-            <input type="checkbox" data-action="trip-item-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
-            <span>${escapeHtml(item.title)} - ${escapeHtml(item.category)}</span>
-          </label>
+        ${groupedItems.map((group) => `
+          <section class="trip-category">
+            <h4 class="trip-category-title">${escapeHtml(group.category)}</h4>
+            ${group.items.map((item) => `
+              <label class="trip-item ${item.is_done ? "is-done" : ""}">
+                <input type="checkbox" data-action="trip-item-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
+                <span>${escapeHtml(item.title)}</span>
+              </label>
+            `).join("")}
+          </section>
         `).join("")}
       </div>
       <form class="trip-add-form" data-action="trip-add-item" data-id="${trip.id}">
@@ -481,7 +494,7 @@
       (category === "Tutte" || item.category === category)
     ));
 
-    if (!candidates.length) return showToast("Non ci sono cose da impacchettare per questa categoria.");
+    if (!candidates.length) return showToast("Non ci sono cose da mettere in lista per questa categoria.");
     setSyncStatus("saving", "Salvataggio...");
 
     const title = $("#shopping-pack-title").value.trim() || (category === "Tutte" ? "Fare la spesa" : `Spesa ${category.toLowerCase()}`);
@@ -527,10 +540,11 @@
       is_done: false
     }));
     const { error: itemsError } = await state.client.from("shopping_trip_items").insert(rows);
-    if (itemsError) return showToast("Non riesco ad aggiungere gli articoli al pacchetto.");
+    if (itemsError) return showToast("Non riesco ad aggiungere gli articoli alla lista spesa.");
 
     $("#shopping-pack-title").value = "";
-    showToast("Spesa impacchettata e assegnata.");
+    $("#shopping-pack-form").hidden = true;
+    showToast("Lista spesa pronta e assegnata.");
     await loadAll();
     setView("today");
   }
@@ -763,6 +777,39 @@
       return;
     }
     openTaskDialog();
+  }
+
+  function showShoppingTripForm() {
+    const form = $("#shopping-pack-form");
+    form.hidden = !form.hidden;
+    if (!form.hidden) $("#shopping-pack-title").focus();
+  }
+
+  function renderNavBadges() {
+    const counts = navCounts();
+    $$(".nav-btn").forEach((button) => {
+      const count = counts[button.dataset.target] || 0;
+      const badge = button.querySelector(".nav-count");
+      badge.textContent = count > 99 ? "99+" : String(count);
+      badge.classList.toggle("has-count", count > 0);
+      badge.setAttribute("aria-label", `${count} cose`);
+    });
+  }
+
+  function navCounts() {
+    const today = todayKey();
+    const tomorrow = dateKey(addDays(new Date(), 1));
+    const weekEnd = dateKey(addDays(new Date(), 7));
+    const todo = state.tasks.filter((task) => task.status === "Da fare");
+    const packedIds = activePackedShoppingIds();
+    return {
+      today: todo.filter((task) => task.due_date === today || (!task.due_date && task.priority === "Essenziale")).length,
+      tomorrow: todo.filter((task) => task.due_date === tomorrow).length,
+      week: todo.filter((task) => task.due_date && task.due_date > tomorrow && task.due_date <= weekEnd).length + todo.filter((task) => !task.due_date && task.priority !== "Essenziale").length,
+      shopping: state.shopping.filter((item) => item.status === "Da comprare" && !packedIds.has(item.id)).length + state.shoppingTrips.length,
+      laundry: state.laundry.length,
+      reset: state.reset.filter((item) => !item.is_done).length
+    };
   }
 
   function defaultDueDateForActiveView() {

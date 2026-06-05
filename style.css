@@ -273,6 +273,21 @@ textarea {
   background: #fff8ed;
 }
 
+.pack-form[hidden] {
+  display: none;
+}
+
+.shopping-start {
+  width: 100%;
+  min-height: 44px;
+  margin: 0 0 12px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--primary-dark);
+  font-weight: 900;
+}
+
 .card-list,
 .group-list,
 .check-list {
@@ -359,8 +374,20 @@ textarea {
 
 .trip-items {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin-top: 12px;
+}
+
+.trip-category {
+  display: grid;
+  gap: 7px;
+}
+
+.trip-category-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
 .trip-item {
@@ -428,12 +455,35 @@ textarea {
 }
 
 .nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   min-height: 50px;
   border-radius: 8px;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.nav-count {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.nav-count.has-count {
+  display: inline-flex;
 }
 
 .nav-btn.active {

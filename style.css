@@ -442,6 +442,16 @@ textarea {
   background: #e9edf6;
 }
 
+.badge.shopping-todo {
+  background: #ffe1b8;
+  color: #6c3f09;
+}
+
+.badge.shopping-done {
+  background: #d9f0df;
+  color: #23543a;
+}
+
 .note {
   margin: 8px 0 0;
   color: var(--muted);

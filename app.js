@@ -414,7 +414,7 @@
             <h3>${escapeHtml(item.title)}</h3>
             <div class="meta">
               <span class="badge">${escapeHtml(item.category)}</span>
-              <span class="badge">${escapeHtml(item.status)}</span>
+              <span class="badge ${shoppingStatusClass(item.status)}">${escapeHtml(item.status)}</span>
             </div>
             ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
             <div class="card-actions">
@@ -1002,6 +1002,12 @@
 
   function taskDateLabel(task) {
     return task.due_date ? formatShortDate(task.due_date) : "Quando possibile";
+  }
+
+  function shoppingStatusClass(status) {
+    if (status === "Da comprare") return "shopping-todo";
+    if (status === "Comprato") return "shopping-done";
+    return "";
   }
 
   function empty(text) {

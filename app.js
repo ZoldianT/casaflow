@@ -325,11 +325,9 @@
     const tomorrow = addDays(today, 1);
     const weekEnd = addDays(today, 7);
     const todo = state.tasks.filter((task) => task.status === "Da fare");
-    const tomorrowTasks = todo.filter((task) => task.due_date === dateKey(tomorrow)).sort(sortByPriority);
     const nextTasks = todo.filter((task) => task.due_date && parseDate(task.due_date) > tomorrow && parseDate(task.due_date) <= weekEnd).sort(sortByDateThenPriority);
     const somedayTasks = todo.filter((task) => !task.due_date && task.priority !== "Essenziale").sort(sortByPriority);
     const html = [
-      renderTaskGroup("Domani", tomorrowTasks),
       renderTaskGroup("Prossimi giorni", nextTasks),
       renderTaskGroup("Quando possibile", somedayTasks)
     ].join("");

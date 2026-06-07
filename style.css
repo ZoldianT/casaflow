@@ -385,6 +385,30 @@ textarea {
   padding: 14px;
 }
 
+.task-card {
+  position: relative;
+  padding-right: 46px;
+}
+
+.card-dismiss {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  min-height: 32px;
+  border-radius: 999px;
+  background: #f5e8dd;
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.card-dismiss:active {
+  background: #ead6c8;
+  color: var(--ink);
+}
+
 .card h3 {
   margin: 0 0 7px;
   font-size: 18px;
@@ -424,14 +448,32 @@ textarea {
 }
 
 .card-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
 
 .card-actions button {
-  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding-inline: 10px;
+  font-size: 14px;
+}
+
+.card-actions button:only-child {
+  grid-column: 1 / -1;
+}
+
+.action-earlier {
+  background: #e7f0fb;
+  color: #24496f;
+}
+
+.action-later {
+  grid-column: 2;
+  background: #fff1d8;
+  color: #6b4517;
 }
 
 .group h3 {

@@ -365,6 +365,7 @@
     const trip = state.shoppingTrips.find((item) => item.task_id === task.id);
     return `
       <article class="card task-card" data-id="${task.id}">
+        <button class="card-dismiss" type="button" data-action="task-archive" data-id="${task.id}" aria-label="Togli dalla lista" title="Togli dalla lista">x</button>
         <h3>${escapeHtml(task.title)}</h3>
         <div class="meta">
           <span class="badge">${escapeHtml(task.category)}</span>
@@ -376,13 +377,27 @@
         ${task.note ? `<p class="note">${escapeHtml(task.note)}</p>` : ""}
         ${trip ? renderShoppingTripChecklist(trip) : ""}
         <div class="card-actions">
-          <button class="primary" type="button" data-action="task-done" data-id="${task.id}">Segna fatto</button>
-          <button class="ghost" type="button" data-action="task-tomorrow" data-id="${task.id}">Sposta a domani</button>
+          <button class="primary action-done" type="button" data-action="task-done" data-id="${task.id}">Segna fatto</button>
+          ${renderTaskEarlierAction(task)}
           <button class="ghost" type="button" data-action="task-edit" data-id="${task.id}">Modifica</button>
-          <button class="ghost" type="button" data-action="task-archive" data-id="${task.id}">Via dalla lista</button>
+          ${renderTaskLaterAction(task)}
         </div>
       </article>
     `;
+  }
+
+  function renderTaskEarlierAction(task) {
+    if (!task.due_date) return "";
+    const today = todayKey();
+    if (task.due_date <= today) return "";
+    return `<button class="ghost action-earlier" type="button" data-action="task-earlier" data-id="${task.id}">Anticipa 1 giorno</button>`;
+  }
+
+  function renderTaskLaterAction(task) {
+    if (!task.due_date) {
+      return `<button class="ghost action-later" type="button" data-action="task-schedule-tomorrow" data-id="${task.id}">Metti domani</button>`;
+    }
+    return `<button class="ghost action-later" type="button" data-action="task-later" data-id="${task.id}">Posticipa 1 giorno</button>`;
   }
 
   function renderShopping() {
@@ -632,7 +647,9 @@
     const action = button.dataset.action;
     const id = button.dataset.id;
     if (action === "task-done") return completeTask(id);
-    if (action === "task-tomorrow") return updateTask(id, { due_date: dateKey(addDays(new Date(), 1)), status: "Da fare", completed_at: null });
+    if (action === "task-schedule-tomorrow") return moveTaskDate(id, 1, new Date());
+    if (action === "task-earlier") return moveTaskDate(id, -1);
+    if (action === "task-later") return moveTaskDate(id, 1);
     if (action === "task-edit") return openTaskDialog(state.tasks.find((task) => task.id === id));
     if (action === "task-archive") return updateTask(id, { status: "Archiviato" });
     if (action === "shopping-toggle") return toggleShopping(id);
@@ -698,6 +715,15 @@
     const { error } = await state.client.from("tasks").update(payload).eq("id", id);
     if (error) return showActionError("Non riesco ad aggiornare il task.");
     await loadAll();
+  }
+
+  async function moveTaskDate(id, days, fallbackDate) {
+    const task = state.tasks.find((item) => item.id === id);
+    if (!task && !fallbackDate) return;
+    const baseDate = task && task.due_date ? parseDate(task.due_date) : fallbackDate;
+    if (!baseDate) return;
+    const nextDate = dateKey(addDays(baseDate, days));
+    return updateTask(id, { due_date: nextDate, status: "Da fare", completed_at: null });
   }
 
   async function toggleShopping(id) {

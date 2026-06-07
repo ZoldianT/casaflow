@@ -10,7 +10,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 - [x] Semplificare il form di creazione task mostrando subito solo titolo, scadenza semplice e assegnatario, con opzioni avanzate espandibili per categoria, priorita', stato e ricorrenza.
 - [x] Rendere la modalita' Sopravvivenza piu' esplicita come stato globale o come filtro locale chiaramente indicato, con un banner o indicatore visibile quando e' attiva.
 - [x] Convertire il flusso "Pacchetto spesa" in un'azione piu' naturale, ad esempio "Sto andando a fare la spesa", mostrando i dettagli solo dopo il click.
-- [ ] Sincronizzare subito ogni azione utente sul server remoto e aggiornare l'interfaccia con stato chiaro di salvataggio, errore o conferma.
+- [x] Sincronizzare subito ogni azione utente sul server remoto e aggiornare l'interfaccia con stato chiaro di salvataggio, errore o conferma.
 - [x] Aggiungere un indicatore di sincronizzazione, ad esempio "Aggiornato ora", "Salvataggio..." o "Non sincronizzato", per aumentare la fiducia tra i due telefoni.
 - [ ] Aggiungere undo leggero dopo azioni come elimina, archivia, completa o chiudi spesa.
 - [ ] Introdurre template rapidi per task ricorrenti domestici, ad esempio cambio lenzuola, pannolini, lavastoviglie, spazzatura e medicine.
@@ -33,7 +33,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 - [x] Migliorare la leggibilita' della bottom nav su mobile, specialmente se resta con molte voci.
 - [ ] Evidenziare in modo morbido gli elementi essenziali senza usare colori allarmistici.
 - [x] Mostrare una breve anteprima della prossima azione utile nella schermata Oggi, ad esempio "Stasera: reset casa".
-- [ ] Aggiungere una piccola cronologia recente non competitiva, ad esempio "Fatto oggi", utile solo come rassicurazione.
+- [x] Aggiungere una piccola cronologia recente non competitiva, ad esempio "Fatto oggi", utile solo come rassicurazione.
 - [x] Rendere il carrello spesa piu' scansionabile raggruppando gli articoli per categoria.
 - [ ] Valutare icone discrete per navigazione e azioni principali, mantenendo comunque etichette testuali chiare.
 - [ ] Aggiungere una modalita' "giornata leggera" per suggerire automaticamente pochi task essenziali quando la lista e' troppo piena.

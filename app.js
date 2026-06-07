@@ -262,6 +262,7 @@
     renderTodayDashboard(todayTasks, tasks);
     renderTodayNextAction(tasks);
     renderSurvivalFilterNote(hiddenBySurvival);
+    renderTodayDoneHistory();
     $("#today-list").innerHTML = tasks.length
       ? tasks.map(renderTaskCard).join("")
       : empty(state.survival && hiddenBySurvival ? "Le cose leggere ci sono, ma per ora restano fuori vista." : state.survival ? "In sopravvivenza non c'e' nulla di essenziale. Respira." : "Per oggi non c'e' nulla di urgente. Respira.");
@@ -332,6 +333,32 @@
     }
     const resetPending = state.reset.filter((item) => !item.is_done).length;
     box.innerHTML = `<strong>Prossima cosa utile</strong><p>${resetPending ? "Stasera: reset casa." : "Per ora e' tutto leggero."}</p>`;
+  }
+
+  function renderTodayDoneHistory() {
+    const doneToday = state.tasks
+      .filter((task) => task.status === "Fatto" && task.completed_at && dateKey(new Date(task.completed_at)) === todayKey())
+      .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+      .slice(0, 5);
+    const box = $("#today-done-history");
+    if (!doneToday.length) {
+      box.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    box.hidden = false;
+    const reward = doneReward(doneToday.length);
+    box.innerHTML = `
+      <div class="done-history-head">
+        <strong>Fatto oggi</strong>
+        <span class="badge reward-badge">${escapeHtml(reward)}</span>
+      </div>
+      <div class="done-history-items">
+        ${doneToday.map((task) => `
+          <p><span>${escapeHtml(formatTime(new Date(task.completed_at)))}</span> ${escapeHtml(task.title)}</p>
+        `).join("")}
+      </div>
+    `;
   }
 
   function renderTomorrow() {
@@ -994,6 +1021,13 @@
     if (!firstStatus) return "Niente da seguire";
     const count = state.laundry.filter((item) => item.laundry_status === firstStatus).length;
     return `${count} ${count === 1 ? "giro" : "giri"}: ${firstStatus.toLowerCase()}`;
+  }
+
+  function doneReward(count) {
+    if (count >= 5) return "Medaglia divano meritato";
+    if (count >= 3) return "Coppa casa che respira";
+    if (count >= 2) return "Doppio colpo leggero";
+    return "Stellina domestica";
   }
 
   function formatShortDate(value) {

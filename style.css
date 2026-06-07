@@ -291,6 +291,39 @@ textarea {
   margin-bottom: 0;
 }
 
+.done-history {
+  margin-top: 12px;
+  background: #fbfff7;
+}
+
+.done-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.reward-badge {
+  background: #e8f3d6;
+  color: #3f5a22;
+}
+
+.done-history-items {
+  display: grid;
+  gap: 6px;
+}
+
+.done-history-items p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.done-history-items span {
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .toast {
   position: fixed;
   z-index: 20;

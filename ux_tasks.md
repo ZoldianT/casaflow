@@ -4,7 +4,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 
 ## Nuove feature
 
-- [ ] Trasformare "Oggi" in una dashboard quotidiana piu' completa, con blocchi sintetici per task di oggi, spesa urgente, bucato da non dimenticare e reset serale.
+- [x] Trasformare "Oggi" in una dashboard quotidiana piu' completa, con blocchi sintetici per task di oggi, spesa urgente, bucato da non dimenticare e reset serale.
 - [ ] Ridurre la navigazione principale e introdurre una sezione "Pianifica" che raccolga le viste Domani e Settimana, evitando sovrapposizioni mentali tra le due.
 - [x] Aggiungere un quick add contestuale: se l'utente aggiunge da Oggi il task nasce per oggi, da Domani nasce per domani, da Pianifica nasce "quando possibile".
 - [x] Semplificare il form di creazione task mostrando subito solo titolo, scadenza semplice e assegnatario, con opzioni avanzate espandibili per categoria, priorita', stato e ricorrenza.
@@ -23,8 +23,8 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 - [x] Proteggere la chiusura della spesa: se non tutti gli articoli sono spuntati, chiedere conferma o impedire la chiusura automatica.
 - [x] Chiarire il pulsante Reset nella sezione reset casa, sostituendo "Resetta" con un testo meno ambiguo come "Ricomincia checklist".
 - [x] Rendere piu' esplicito il pulsante "Avanza" nel bucato, indicando lo stato successivo reale.
-- [ ] Verificare che gli stati vuoti non nascondano informazioni importanti quando la modalita' Sopravvivenza filtra la vista.
-- [ ] Gestire meglio eventuali errori di rete durante le azioni, mantenendo l'utente informato senza perdere il contesto.
+- [x] Verificare che gli stati vuoti non nascondano informazioni importanti quando la modalita' Sopravvivenza filtra la vista.
+- [x] Gestire meglio eventuali errori di rete durante le azioni, mantenendo l'utente informato senza perdere il contesto.
 
 ## Nice to have
 

@@ -242,6 +242,47 @@ textarea {
   font-weight: 800;
 }
 
+.today-dashboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.today-metric {
+  min-height: 104px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+.today-metric span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.today-metric strong {
+  display: block;
+  margin: 5px 0;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.today-metric p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.survival-filter-note {
+  margin-bottom: 12px;
+}
+
 .toast {
   position: fixed;
   z-index: 20;

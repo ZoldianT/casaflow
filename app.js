@@ -212,8 +212,7 @@
       setSyncStatus("ok", `Aggiornato ${formatTime(new Date())}`);
       render();
     } catch (error) {
-      setSyncStatus("error", "Non sincronizzato");
-      setGlobalError("Errore nel caricamento dei dati.");
+      showActionError("Non riesco ad aggiornare i dati. Quello che vedi potrebbe non essere l'ultima versione.");
     }
   }
 
@@ -255,18 +254,58 @@
 
   function renderToday() {
     $("#survival-banner").hidden = !state.survival;
-    let tasks = state.tasks.filter((task) => task.status === "Da fare" && (task.due_date === todayKey() || (!task.due_date && task.priority === "Essenziale")));
+    const todayTasks = state.tasks.filter((task) => task.status === "Da fare" && (task.due_date === todayKey() || (!task.due_date && task.priority === "Essenziale")));
+    let tasks = [...todayTasks];
     if (state.survival) tasks = tasks.filter((task) => task.priority === "Essenziale");
     tasks.sort(sortByPriority);
+    const hiddenBySurvival = todayTasks.length - tasks.length;
+    renderTodayDashboard(todayTasks, tasks);
+    renderSurvivalFilterNote(hiddenBySurvival);
     $("#today-list").innerHTML = tasks.length
       ? tasks.map(renderTaskCard).join("")
-      : empty(state.survival ? "In sopravvivenza non c'e' nulla di essenziale. Respira." : "Per oggi non c'e' nulla di urgente. Respira.");
+      : empty(state.survival && hiddenBySurvival ? "Le cose leggere ci sono, ma per ora restano fuori vista." : state.survival ? "In sopravvivenza non c'e' nulla di essenziale. Respira." : "Per oggi non c'e' nulla di urgente. Respira.");
 
     const urgentShopping = state.shopping.filter((item) => item.status === "Da comprare" && ["Bimba", "Farmacia"].includes(item.category));
     const box = $("#today-survival-shopping");
     if (state.survival && urgentShopping.length) {
       box.hidden = false;
       box.innerHTML = `<strong>Da tenere a mente</strong>${urgentShopping.map((item) => `<p>${escapeHtml(item.title)} - ${escapeHtml(item.category)}</p>`).join("")}`;
+    } else {
+      box.hidden = true;
+      box.innerHTML = "";
+    }
+  }
+
+  function renderTodayDashboard(todayTasks, visibleTasks) {
+    const urgentShopping = state.shopping.filter((item) => item.status === "Da comprare" && ["Bimba", "Farmacia"].includes(item.category));
+    const laundryActive = state.laundry.length;
+    const resetPending = state.reset.filter((item) => !item.is_done).length;
+    const hiddenText = state.survival && visibleTasks.length !== todayTasks.length
+      ? `${visibleTasks.length}/${todayTasks.length} visibili`
+      : `${todayTasks.length} ${todayTasks.length === 1 ? "cosa" : "cose"}`;
+    $("#today-dashboard").innerHTML = [
+      renderTodayMetric("Oggi", hiddenText, nextTodayHint(visibleTasks)),
+      renderTodayMetric("Spesa urgente", String(urgentShopping.length), urgentShopping.length ? urgentShopping.slice(0, 2).map((item) => item.title).join(", ") : "Niente di critico"),
+      renderTodayMetric("Bucato", String(laundryActive), laundryActive ? nextLaundryHint() : "Niente da seguire"),
+      renderTodayMetric("Reset sera", String(resetPending), resetPending ? "Checklist ancora aperta" : "Gia' a posto")
+    ].join("");
+  }
+
+  function renderTodayMetric(label, value, hint) {
+    return `
+      <article class="today-metric">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        <p>${escapeHtml(hint)}</p>
+      </article>
+    `;
+  }
+
+  function renderSurvivalFilterNote(hiddenCount) {
+    const box = $("#survival-filter-note");
+    if (state.survival && hiddenCount > 0) {
+      box.hidden = false;
+      box.innerHTML = `<strong>Sopravvivenza</strong><p>${hiddenCount} ${hiddenCount === 1 ? "cosa non essenziale resta" : "cose non essenziali restano"} fuori vista. Disattivala quando torna aria.</p>`;
     } else {
       box.hidden = true;
       box.innerHTML = "";
@@ -430,6 +469,7 @@
 
   function renderReset() {
     const visible = state.survival ? state.reset.filter((item) => SURVIVAL_RESET_ITEMS.includes(item.label)) : state.reset;
+    const hiddenBySurvival = state.reset.length - visible.length;
     $("#reset-list").innerHTML = visible.length
       ? visible.map((item) => `
           <label class="check-row ${item.is_done ? "is-done" : ""}">
@@ -437,7 +477,7 @@
             <span>${escapeHtml(item.label)}</span>
           </label>
         `).join("")
-      : empty("Il reset di oggi e' pronto appena serve.");
+      : empty(state.survival && hiddenBySurvival ? `${hiddenBySurvival} voci leggere del reset sono nascoste dalla sopravvivenza.` : "Il reset di oggi e' pronto appena serve.");
   }
 
   async function saveTask(event) {
@@ -461,7 +501,7 @@
       ? state.client.from("tasks").update(payload).eq("id", id)
       : state.client.from("tasks").insert(payload);
     const { error } = await request;
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco a salvare il task. Riprova tra poco.");
     $("#task-dialog").close();
     await loadAll();
   }
@@ -478,7 +518,7 @@
       status: "Da comprare",
       created_by: state.session.user.id
     });
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco ad aggiungere questa cosa alla spesa.");
     $("#shopping-title").value = "";
     await loadAll();
   }
@@ -514,7 +554,7 @@
       })
       .select()
       .single();
-    if (taskError) return showToast("Non riesco a creare il task spesa.");
+    if (taskError) return showActionError("Non riesco a creare il task spesa.");
 
     const { data: trip, error: tripError } = await state.client
       .from("shopping_trips")
@@ -528,7 +568,7 @@
       })
       .select()
       .single();
-    if (tripError) return showToast("Task creato, ma non riesco a preparare la lista carrello.");
+    if (tripError) return showActionError("Task creato, ma non riesco a preparare la lista carrello.");
 
     const rows = candidates.map((item) => ({
       household_id: state.householdId,
@@ -540,7 +580,7 @@
       is_done: false
     }));
     const { error: itemsError } = await state.client.from("shopping_trip_items").insert(rows);
-    if (itemsError) return showToast("Non riesco ad aggiungere gli articoli alla lista spesa.");
+    if (itemsError) return showActionError("Non riesco ad aggiungere gli articoli alla lista spesa.");
 
     $("#shopping-pack-title").value = "";
     $("#shopping-pack-form").hidden = true;
@@ -561,7 +601,7 @@
       laundry_status: "Da lavare",
       created_by: state.session.user.id
     });
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco ad aggiungere questo bucato.");
     $("#laundry-title").value = "";
     await loadAll();
   }
@@ -586,14 +626,14 @@
     if (event.target.dataset.action === "trip-item-toggle") {
       setSyncStatus("saving", "Salvataggio...");
       const { error } = await state.client.from("shopping_trip_items").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
-      if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+      if (error) return showActionError("Non riesco a spuntare l'articolo del carrello.");
       await loadAll();
       return;
     }
     if (event.target.dataset.action !== "reset-toggle") return;
     setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("reset_checklist").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco ad aggiornare il reset.");
     await loadAll();
   }
 
@@ -612,7 +652,7 @@
     if (!task) return;
     setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: new Date().toISOString() }).eq("id", id);
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco a segnare il task come fatto.");
     if (task.recurrence !== "Nessuna") {
       const nextDate = nextRecurrenceDate(task.due_date || todayKey(), task.recurrence);
       const copy = {
@@ -628,7 +668,7 @@
         created_by: state.session.user.id
       };
       const { error: copyError } = await state.client.from("tasks").insert(copy);
-      if (copyError) return showToast("Task completato, ma non riesco a creare la prossima ricorrenza.");
+      if (copyError) return showActionError("Task completato, ma non riesco a creare la prossima ricorrenza.");
     }
     await loadAll();
   }
@@ -636,7 +676,7 @@
   async function updateTask(id, payload) {
     setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("tasks").update(payload).eq("id", id);
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco ad aggiornare il task.");
     await loadAll();
   }
 
@@ -649,7 +689,7 @@
       status: bought ? "Comprato" : "Da comprare",
       bought_at: bought ? new Date().toISOString() : null
     }).eq("id", id);
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco ad aggiornare la spesa.");
     await loadAll();
   }
 
@@ -672,26 +712,26 @@
         .from("shopping_items")
         .update({ status: "Comprato", bought_at: now })
         .in("id", sourceIds);
-      if (shoppingError) return showToast("Non riesco a chiudere la spesa.");
+      if (shoppingError) return showActionError("Non riesco a chiudere la spesa.");
     }
 
     const { error: itemsError } = await state.client
       .from("shopping_trip_items")
       .update({ is_done: true })
       .eq("trip_id", id);
-    if (itemsError) return showToast("Non riesco a chiudere la spesa.");
+    if (itemsError) return showActionError("Non riesco a chiudere la spesa.");
 
     const { error: tripError } = await state.client
       .from("shopping_trips")
       .update({ status: "Fatto", completed_at: now })
       .eq("id", id);
-    if (tripError) return showToast("Non riesco a chiudere la spesa.");
+    if (tripError) return showActionError("Non riesco a chiudere la spesa.");
 
     const { error: taskError } = await state.client
       .from("tasks")
       .update({ status: "Fatto", completed_at: now })
       .eq("id", trip.task_id);
-    if (taskError) return showToast("Spesa chiusa, ma non riesco a completare il task.");
+    if (taskError) return showActionError("Spesa chiusa, ma non riesco a completare il task.");
 
     showToast("Spesa chiusa. Bel colpo.");
     await loadAll();
@@ -716,7 +756,7 @@
       })
       .select()
       .single();
-    if (shoppingError) return showToast("Non riesco ad aggiungere l'articolo.");
+    if (shoppingError) return showActionError("Non riesco ad aggiungere l'articolo.");
 
     const { error: tripItemError } = await state.client
       .from("shopping_trip_items")
@@ -728,7 +768,7 @@
         category,
         is_done: false
       });
-    if (tripItemError) return showToast("Articolo creato, ma non riesco ad aggiungerlo al carrello.");
+    if (tripItemError) return showActionError("Articolo creato, ma non riesco ad aggiungerlo al carrello.");
 
     const lines = [...(trip.shopping_trip_items || []).map((item) => `- ${item.title}`), `- ${title}`];
     await state.client.from("tasks").update({ note: lines.join("\n") }).eq("id", trip.task_id);
@@ -745,14 +785,14 @@
     const next = LAUNDRY_STATUSES[LAUNDRY_STATUSES.indexOf(item.laundry_status) + 1] || "Fatto";
     const payload = { laundry_status: next, completed_at: next === "Fatto" ? new Date().toISOString() : null };
     const { error } = await state.client.from("laundry_items").update(payload).eq("id", id);
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco ad aggiornare il bucato.");
     await loadAll();
   }
 
   async function deleteRow(table, id) {
     setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from(table).delete().eq("id", id);
-    if (error) return showToast("Non riesco a eliminare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco a eliminare. Nulla e' stato tolto dalla lista.");
     await loadAll();
   }
 
@@ -763,7 +803,7 @@
       .update({ is_done: false })
       .eq("household_id", state.householdId)
       .eq("reset_date", todayKey());
-    if (error) return showToast("Non riesco a salvare. Controlla la connessione.");
+    if (error) return showActionError("Non riesco a ricominciare la checklist.");
     await loadAll();
   }
 
@@ -899,6 +939,19 @@
     return next === "Fatto" ? "Segna fatto" : `Verso: ${next}`;
   }
 
+  function nextTodayHint(tasks) {
+    if (!tasks.length) return "Niente di urgente";
+    const essential = tasks.find((task) => task.priority === "Essenziale");
+    return essential ? essential.title : tasks[0].title;
+  }
+
+  function nextLaundryHint() {
+    const firstStatus = LAUNDRY_STATUSES.find((status) => status !== "Fatto" && state.laundry.some((item) => item.laundry_status === status));
+    if (!firstStatus) return "Niente da seguire";
+    const count = state.laundry.filter((item) => item.laundry_status === firstStatus).length;
+    return `${count} ${count === 1 ? "giro" : "giri"}: ${firstStatus.toLowerCase()}`;
+  }
+
   function formatShortDate(value) {
     return new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(parseDate(value));
   }
@@ -922,6 +975,12 @@
     const box = $("#sync-status");
     box.textContent = message;
     box.dataset.status = status;
+  }
+
+  function showActionError(message) {
+    setSyncStatus("error", "Non sincronizzato");
+    setGlobalError(`${message} I dati sullo schermo sono rimasti com'erano prima del tentativo.`);
+    showToast(message);
   }
 
   function showLoginError(message) {

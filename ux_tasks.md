@@ -5,7 +5,7 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 ## Nuove feature
 
 - [x] Trasformare "Oggi" in una dashboard quotidiana piu' completa, con blocchi sintetici per task di oggi, spesa urgente, bucato da non dimenticare e reset serale.
-- [ ] Ridurre la navigazione principale e introdurre una sezione "Pianifica" che raccolga le viste Domani e Settimana, evitando sovrapposizioni mentali tra le due.
+- [x] Ridurre la navigazione principale e introdurre una sezione "Pianifica" che raccolga le viste Domani e Settimana, evitando sovrapposizioni mentali tra le due.
 - [x] Aggiungere un quick add contestuale: se l'utente aggiunge da Oggi il task nasce per oggi, da Domani nasce per domani, da Pianifica nasce "quando possibile".
 - [x] Semplificare il form di creazione task mostrando subito solo titolo, scadenza semplice e assegnatario, con opzioni avanzate espandibili per categoria, priorita', stato e ricorrenza.
 - [x] Rendere la modalita' Sopravvivenza piu' esplicita come stato globale o come filtro locale chiaramente indicato, con un banner o indicatore visibile quando e' attiva.
@@ -30,9 +30,9 @@ Questo file traccia i miglioramenti UX emersi dall'analisi complessiva dell'app.
 
 - [x] Aggiungere microcopy piu' domestico nelle azioni principali, mantenendo tono anti-colpa e anti-gestionale.
 - [x] Aggiungere badge numerici nella navigazione per indicare quante cose richiedono attenzione in Oggi, Spesa, Bucato e Reset.
-- [ ] Migliorare la leggibilita' della bottom nav su mobile, specialmente se resta con molte voci.
+- [x] Migliorare la leggibilita' della bottom nav su mobile, specialmente se resta con molte voci.
 - [ ] Evidenziare in modo morbido gli elementi essenziali senza usare colori allarmistici.
-- [ ] Mostrare una breve anteprima della prossima azione utile nella schermata Oggi, ad esempio "Stasera: reset casa".
+- [x] Mostrare una breve anteprima della prossima azione utile nella schermata Oggi, ad esempio "Stasera: reset casa".
 - [ ] Aggiungere una piccola cronologia recente non competitiva, ad esempio "Fatto oggi", utile solo come rassicurazione.
 - [x] Rendere il carrello spesa piu' scansionabile raggruppando gli articoli per categoria.
 - [ ] Valutare icone discrete per navigazione e azioni principali, mantenendo comunque etichette testuali chiare.

@@ -260,6 +260,7 @@
     tasks.sort(sortByPriority);
     const hiddenBySurvival = todayTasks.length - tasks.length;
     renderTodayDashboard(todayTasks, tasks);
+    renderTodayNextAction(tasks);
     renderSurvivalFilterNote(hiddenBySurvival);
     $("#today-list").innerHTML = tasks.length
       ? tasks.map(renderTaskCard).join("")
@@ -312,11 +313,32 @@
     }
   }
 
+  function renderTodayNextAction(tasks) {
+    const box = $("#today-next-action");
+    const urgentTask = tasks.find((task) => task.priority === "Essenziale") || tasks[0];
+    if (urgentTask) {
+      box.innerHTML = `<strong>Prossima cosa utile</strong><p>${escapeHtml(urgentTask.title)} - ${escapeHtml(urgentTask.assigned_to)}</p>`;
+      return;
+    }
+    const urgentShopping = state.shopping.find((item) => item.status === "Da comprare" && ["Bimba", "Farmacia"].includes(item.category));
+    if (urgentShopping) {
+      box.innerHTML = `<strong>Prossima cosa utile</strong><p>Tenere a mente: ${escapeHtml(urgentShopping.title)}</p>`;
+      return;
+    }
+    const laundry = state.laundry[0];
+    if (laundry) {
+      box.innerHTML = `<strong>Prossima cosa utile</strong><p>Bucato: ${escapeHtml(laundry.title)} (${escapeHtml(laundry.laundry_status)})</p>`;
+      return;
+    }
+    const resetPending = state.reset.filter((item) => !item.is_done).length;
+    box.innerHTML = `<strong>Prossima cosa utile</strong><p>${resetPending ? "Stasera: reset casa." : "Per ora e' tutto leggero."}</p>`;
+  }
+
   function renderTomorrow() {
     const tomorrow = dateKey(addDays(new Date(), 1));
     const tasks = state.tasks.filter((task) => task.status === "Da fare" && task.due_date === tomorrow).sort(sortByPriority);
     $("#tomorrow-list").innerHTML = tasks.length
-      ? tasks.map(renderTaskCard).join("")
+      ? `<section class="group"><h3>Domani</h3><div class="group-items">${tasks.map(renderTaskCard).join("")}</div></section>`
       : empty("Domani e' ancora leggero. Lo prepariamo con calma.");
   }
 
@@ -842,8 +864,7 @@
     const packedIds = activePackedShoppingIds();
     return {
       today: todo.filter((task) => task.due_date === today || (!task.due_date && task.priority === "Essenziale")).length,
-      tomorrow: todo.filter((task) => task.due_date === tomorrow).length,
-      week: todo.filter((task) => task.due_date && task.due_date > tomorrow && task.due_date <= weekEnd).length + todo.filter((task) => !task.due_date && task.priority !== "Essenziale").length,
+      plan: todo.filter((task) => task.due_date === tomorrow || (task.due_date && task.due_date > tomorrow && task.due_date <= weekEnd) || (!task.due_date && task.priority !== "Essenziale")).length,
       shopping: state.shopping.filter((item) => item.status === "Da comprare" && !packedIds.has(item.id)).length + state.shoppingTrips.length,
       laundry: state.laundry.length,
       reset: state.reset.filter((item) => !item.is_done).length
@@ -852,7 +873,6 @@
 
   function defaultDueDateForActiveView() {
     if (state.activeView === "today") return todayKey();
-    if (state.activeView === "tomorrow") return dateKey(addDays(new Date(), 1));
     return "";
   }
 

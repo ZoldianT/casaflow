@@ -56,29 +56,21 @@
         Modalita' sopravvivenza attiva: mostro solo le cose essenziali.
       </div>
       <div id="today-dashboard" class="today-dashboard"></div>
+      <div id="today-next-action" class="quiet-list today-next-action"></div>
       <div id="survival-filter-note" class="quiet-list survival-filter-note" hidden></div>
       <div id="today-survival-shopping" class="quiet-list" hidden></div>
       <div id="today-list" class="card-list"></div>
     </section>
 
-    <section id="week-section" class="view" data-view="week">
+    <section id="plan-section" class="view" data-view="plan">
       <div class="section-top">
         <div>
-          <p class="eyebrow">Settimana</p>
-          <h2>Prossimi giorni</h2>
+          <p class="eyebrow">Pianifica</p>
+          <h2>Domani e prossimi giorni</h2>
         </div>
       </div>
+      <div id="tomorrow-list" class="card-list plan-block"></div>
       <div id="week-list" class="group-list"></div>
-    </section>
-
-    <section id="tomorrow-section" class="view" data-view="tomorrow">
-      <div class="section-top">
-        <div>
-          <p class="eyebrow">Domani</p>
-          <h2>Prepariamo domani</h2>
-        </div>
-      </div>
-      <div id="tomorrow-list" class="card-list"></div>
     </section>
 
     <section id="shopping-section" class="view" data-view="shopping">
@@ -140,8 +132,7 @@
 
     <nav class="bottom-nav" aria-label="Navigazione principale">
       <button class="nav-btn active" type="button" data-target="today"><span class="nav-label">Oggi</span><span class="nav-count" aria-label="0 cose">0</span></button>
-      <button class="nav-btn" type="button" data-target="tomorrow"><span class="nav-label">Domani</span><span class="nav-count" aria-label="0 cose">0</span></button>
-      <button class="nav-btn" type="button" data-target="week"><span class="nav-label">Settimana</span><span class="nav-count" aria-label="0 cose">0</span></button>
+      <button class="nav-btn" type="button" data-target="plan"><span class="nav-label">Pianifica</span><span class="nav-count" aria-label="0 cose">0</span></button>
       <button class="nav-btn" type="button" data-target="shopping"><span class="nav-label">Spesa</span><span class="nav-count" aria-label="0 cose">0</span></button>
       <button class="nav-btn" type="button" data-target="laundry"><span class="nav-label">Bucato</span><span class="nav-count" aria-label="0 cose">0</span></button>
       <button class="nav-btn" type="button" data-target="reset"><span class="nav-label">Reset</span><span class="nav-count" aria-label="0 cose">0</span></button>

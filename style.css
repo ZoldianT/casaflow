@@ -309,6 +309,48 @@ textarea {
   color: #3f5a22;
 }
 
+.reward-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.reward-badge.spesa {
+  background: #ffe1b8;
+  color: #6c3f09;
+}
+
+.reward-badge.bimba {
+  background: #ffe1ec;
+  color: #71304c;
+}
+
+.reward-badge.bucato {
+  background: #dff0ff;
+  color: #24496f;
+}
+
+.reward-badge.pulizie {
+  background: #e4f4e8;
+  color: #2f5a3e;
+}
+
+.reward-badge.casa {
+  background: #f1eadf;
+  color: #5c4934;
+}
+
+.reward-badge.admin {
+  background: #e9edf6;
+  color: #37435e;
+}
+
+.reward-badge.calm {
+  background: #e8f3d6;
+  color: #3f5a22;
+}
+
 .done-history-items {
   display: grid;
   gap: 6px;
@@ -322,6 +364,11 @@ textarea {
 .done-history-items span {
   color: var(--ink);
   font-weight: 800;
+}
+
+.done-history-items em {
+  color: var(--muted);
+  font-style: normal;
 }
 
 .toast {

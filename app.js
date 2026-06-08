@@ -30,7 +30,8 @@
     shopping: [],
     shoppingTrips: [],
     laundry: [],
-    reset: []
+    reset: [],
+    achievements: []
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -191,14 +192,15 @@
     setSyncStatus("syncing", "Aggiornamento...");
     try {
       await ensureTodayChecklist();
-      const [tasks, shopping, trips, laundry, reset] = await Promise.all([
+      const [tasks, shopping, trips, laundry, reset, achievements] = await Promise.all([
         state.client.from("tasks").select("*").eq("household_id", state.householdId).neq("status", "Archiviato").order("created_at", { ascending: false }),
         state.client.from("shopping_items").select("*").eq("household_id", state.householdId).order("created_at", { ascending: false }),
         state.client.from("shopping_trips").select("*, shopping_trip_items(*)").eq("household_id", state.householdId).eq("status", "Da fare").order("created_at", { ascending: false }),
         state.client.from("laundry_items").select("*").eq("household_id", state.householdId).neq("laundry_status", "Fatto").order("created_at", { ascending: false }),
-        state.client.from("reset_checklist").select("*").eq("household_id", state.householdId).eq("reset_date", todayKey()).order("created_at", { ascending: true })
+        state.client.from("reset_checklist").select("*").eq("household_id", state.householdId).eq("reset_date", todayKey()).order("created_at", { ascending: true }),
+        state.client.from("achievement_events").select("*").eq("household_id", state.householdId).order("awarded_at", { ascending: false }).limit(50)
       ]);
-      [tasks, shopping, trips, laundry, reset].forEach((result) => {
+      [tasks, shopping, trips, laundry, reset, achievements].forEach((result) => {
         if (result.error) throw result.error;
       });
       state.tasks = tasks.data || [];
@@ -209,6 +211,7 @@
       }));
       state.laundry = laundry.data || [];
       state.reset = reset.data || [];
+      state.achievements = achievements.data || [];
       setSyncStatus("ok", `Aggiornato ${formatTime(new Date())}`);
       render();
     } catch (error) {
@@ -336,26 +339,33 @@
   }
 
   function renderTodayDoneHistory() {
-    const doneToday = state.tasks
-      .filter((task) => task.status === "Fatto" && task.completed_at && dateKey(new Date(task.completed_at)) === todayKey())
-      .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+    const awardsToday = state.achievements
+      .filter((event) => event.awarded_at && dateKey(new Date(event.awarded_at)) === todayKey())
+      .sort((a, b) => new Date(b.awarded_at) - new Date(a.awarded_at))
       .slice(0, 5);
     const box = $("#today-done-history");
-    if (!doneToday.length) {
+    if (!awardsToday.length) {
       box.hidden = true;
       box.innerHTML = "";
       return;
     }
     box.hidden = false;
-    const reward = doneReward(doneToday.length);
+    const latest = awardsToday[0];
+    const badgeChips = uniqueBy(awardsToday, "badge_code").slice(0, 3);
     box.innerHTML = `
       <div class="done-history-head">
-        <strong>Fatto oggi</strong>
-        <span class="badge reward-badge">${escapeHtml(reward)}</span>
+        <div>
+          <strong>Fatto oggi</strong>
+          <p>${escapeHtml(latest.message)}</p>
+        </div>
+        <span class="badge reward-badge">${escapeHtml(latest.level_title)}</span>
+      </div>
+      <div class="reward-strip">
+        ${badgeChips.map((event) => `<span class="badge reward-badge ${escapeAttr(event.badge_tone)}">${escapeHtml(event.badge_title)}</span>`).join("")}
       </div>
       <div class="done-history-items">
-        ${doneToday.map((task) => `
-          <p><span>${escapeHtml(formatTime(new Date(task.completed_at)))}</span> ${escapeHtml(task.title)}</p>
+        ${awardsToday.map((event) => `
+          <p><span>${escapeHtml(formatTime(new Date(event.awarded_at)))}</span> ${escapeHtml(event.task_title)} <em>${escapeHtml(event.awarded_to_name)}</em></p>
         `).join("")}
       </div>
     `;
@@ -715,8 +725,11 @@
     const task = state.tasks.find((item) => item.id === id);
     if (!task) return;
     setSyncStatus("saving", "Salvataggio...");
-    const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: new Date().toISOString() }).eq("id", id);
+    const completedAt = new Date().toISOString();
+    const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: completedAt }).eq("id", id);
     if (error) return showActionError("Non riesco a segnare il task come fatto.");
+    const awardError = await awardTaskAchievement(task, completedAt);
+    if (awardError) return showActionError("Task completato, ma non riesco ad assegnare il riconoscimento.");
     if (task.recurrence !== "Nessuna") {
       const nextDate = nextRecurrenceDate(task.due_date || todayKey(), task.recurrence);
       const copy = {
@@ -805,6 +818,14 @@
       .update({ status: "Fatto", completed_at: now })
       .eq("id", trip.task_id);
     if (taskError) return showActionError("Spesa chiusa, ma non riesco a completare il task.");
+    const task = state.tasks.find((item) => item.id === trip.task_id);
+    const awardError = await awardTaskAchievement(task || {
+      id: trip.task_id,
+      title: trip.title,
+      category: "Spesa",
+      assigned_to: trip.assigned_to
+    }, now);
+    if (awardError) return showActionError("Spesa chiusa, ma non riesco ad assegnare il riconoscimento.");
 
     showToast("Spesa chiusa. Bel colpo.");
     await loadAll();
@@ -1023,11 +1044,89 @@
     return `${count} ${count === 1 ? "giro" : "giri"}: ${firstStatus.toLowerCase()}`;
   }
 
-  function doneReward(count) {
+  async function awardTaskAchievement(task, awardedAt) {
+    if (!task) return null;
+    const badge = achievementBadgeFor(task.category);
+    const dayCount = await achievementCountForDay(awardedAt);
+    const level = achievementLevel(dayCount + 1);
+    const actor = state.member ? state.member.display_name : "Casa condivisa";
+    const payload = {
+      household_id: state.householdId,
+      task_id: task.id,
+      task_title: task.title,
+      task_category: task.category,
+      assigned_to: task.assigned_to || "Chi puo",
+      awarded_to: state.session.user.id,
+      awarded_to_name: actor,
+      badge_code: badge.code,
+      badge_title: badge.title,
+      badge_tone: badge.tone,
+      level_title: level,
+      message: `${actor} ha sbloccato: ${badge.title}. ${achievementMessage(task.category)}`
+    };
+    const { error } = await state.client
+      .from("achievement_events")
+      .upsert(payload, { onConflict: "household_id,task_id,badge_code" });
+    return error;
+  }
+
+  async function achievementCountForDay(value) {
+    const day = parseDate(dateKey(new Date(value)));
+    const nextDay = addDays(day, 1);
+    const { count, error } = await state.client
+      .from("achievement_events")
+      .select("id", { count: "exact", head: true })
+      .eq("household_id", state.householdId)
+      .gte("awarded_at", day.toISOString())
+      .lt("awarded_at", nextDay.toISOString());
+    if (error) return 0;
+    return count || 0;
+  }
+
+  function achievementBadgeFor(category) {
+    const badges = {
+      "Spesa": { code: "frigo_meno_triste", title: "Frigo meno triste", tone: "spesa" },
+      "Bimba": { code: "logistica_nanetta", title: "Logistica nanetta", tone: "bimba" },
+      "Bucato": { code: "lavatrice_domata", title: "Lavatrice domata", tone: "bucato" },
+      "Cucina": { code: "cucina_che_respira", title: "Cucina che respira", tone: "casa" },
+      "Pulizie": { code: "domatore_di_caos", title: "Domatore di caos", tone: "pulizie" },
+      "Casa / lavoretti": { code: "angolo_salvato", title: "Angolo salvato", tone: "casa" },
+      "Amministrativo": { code: "burocrazia_addomesticata", title: "Burocrazia addomesticata", tone: "admin" },
+      "Altro": { code: "peso_tolto", title: "Peso tolto", tone: "calm" }
+    };
+    return badges[category] || badges.Altro;
+  }
+
+  function achievementLevel(count) {
+    if (count >= 8) return "Leggenda domestica";
     if (count >= 5) return "Medaglia divano meritato";
-    if (count >= 3) return "Coppa casa che respira";
-    if (count >= 2) return "Doppio colpo leggero";
-    return "Stellina domestica";
+    if (count >= 3) return "Casa che gira";
+    if (count >= 2) return "Ritmo trovato";
+    return "Scintilla";
+  }
+
+  function achievementMessage(category) {
+    const messages = {
+      "Spesa": "La dispensa ha fatto mezzo sorriso.",
+      "Bimba": "Piccola logistica familiare tenuta insieme.",
+      "Bucato": "Un altro giro di panni sotto controllo.",
+      "Cucina": "La cucina torna un posto attraversabile.",
+      "Pulizie": "Il caos arretra di qualche centimetro.",
+      "Casa / lavoretti": "Un angolo di casa torna a respirare.",
+      "Amministrativo": "Una pratica in meno a ronzare in testa.",
+      "Altro": "Una cosa fatta pesa subito meno."
+    };
+    return messages[category] || messages.Altro;
+  }
+
+  function uniqueBy(items, key) {
+    const seen = new Set();
+    return items.filter((item) => {
+      const value = item[key];
+      if (seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    });
   }
 
   function formatShortDate(value) {

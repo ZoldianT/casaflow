@@ -257,10 +257,10 @@
 
   function renderToday() {
     $("#survival-banner").hidden = !state.survival;
-    const todayTasks = state.tasks.filter((task) => task.status === "Da fare" && (task.due_date === todayKey() || (!task.due_date && task.priority === "Essenziale")));
+    const todayTasks = state.tasks.filter(isTodayTask);
     let tasks = [...todayTasks];
-    if (state.survival) tasks = tasks.filter((task) => task.priority === "Essenziale");
-    tasks.sort(sortByPriority);
+    if (state.survival) tasks = tasks.filter((task) => task.priority === "Essenziale" || isOverdueTask(task));
+    tasks.sort(sortTodayTasks);
     const hiddenBySurvival = todayTasks.length - tasks.length;
     renderTodayDashboard(todayTasks, tasks);
     renderTodayNextAction(tasks);
@@ -285,11 +285,12 @@
     const urgentShopping = state.shopping.filter((item) => item.status === "Da comprare" && ["Bimba", "Farmacia"].includes(item.category));
     const laundryActive = state.laundry.length;
     const resetPending = state.reset.filter((item) => !item.is_done).length;
+    const overdueCount = todayTasks.filter(isOverdueTask).length;
     const hiddenText = state.survival && visibleTasks.length !== todayTasks.length
       ? `${visibleTasks.length}/${todayTasks.length} visibili`
       : `${todayTasks.length} ${todayTasks.length === 1 ? "cosa" : "cose"}`;
     $("#today-dashboard").innerHTML = [
-      renderTodayMetric("Oggi", hiddenText, nextTodayHint(visibleTasks)),
+      renderTodayMetric("Oggi", hiddenText, overdueCount ? `${overdueCount} ${overdueCount === 1 ? "arretrato riportato" : "arretrati riportati"}` : nextTodayHint(visibleTasks)),
       renderTodayMetric("Spesa urgente", String(urgentShopping.length), urgentShopping.length ? urgentShopping.slice(0, 2).map((item) => item.title).join(", ") : "Niente di critico"),
       renderTodayMetric("Bucato", String(laundryActive), laundryActive ? nextLaundryHint() : "Niente da seguire"),
       renderTodayMetric("Reset sera", String(resetPending), resetPending ? "Checklist ancora aperta" : "Gia' a posto")
@@ -400,14 +401,16 @@
 
   function renderTaskCard(task) {
     const trip = state.shoppingTrips.find((item) => item.task_id === task.id);
+    const overdue = isOverdueTask(task);
     return `
-      <article class="card task-card" data-id="${task.id}">
+      <article class="card task-card${overdue ? " is-overdue" : ""}" data-id="${task.id}">
         <button class="card-dismiss" type="button" data-action="task-archive" data-id="${task.id}" aria-label="Togli dalla lista" title="Togli dalla lista">x</button>
         <h3>${escapeHtml(task.title)}</h3>
         <div class="meta">
           <span class="badge">${escapeHtml(task.category)}</span>
           <span class="badge">${escapeHtml(task.assigned_to)}</span>
           <span class="badge ${task.priority.toLowerCase()}">${escapeHtml(task.priority)}</span>
+          ${overdue ? `<span class="badge overdue">Da recuperare</span>` : ""}
           <span class="badge">${taskDateLabel(task)}</span>
           ${task.recurrence !== "Nessuna" ? `<span class="badge">${escapeHtml(task.recurrence)}</span>` : ""}
         </div>
@@ -956,13 +959,12 @@
   }
 
   function navCounts() {
-    const today = todayKey();
     const tomorrow = dateKey(addDays(new Date(), 1));
     const weekEnd = dateKey(addDays(new Date(), 7));
     const todo = state.tasks.filter((task) => task.status === "Da fare");
     const packedIds = activePackedShoppingIds();
     return {
-      today: todo.filter((task) => task.due_date === today || (!task.due_date && task.priority === "Essenziale")).length,
+      today: todo.filter(isTodayTask).length,
       plan: todo.filter((task) => task.due_date === tomorrow || (task.due_date && task.due_date > tomorrow && task.due_date <= weekEnd) || (!task.due_date && task.priority !== "Essenziale")).length,
       shopping: state.shopping.filter((item) => item.status === "Da comprare" && !packedIds.has(item.id)).length + state.shoppingTrips.length,
       laundry: state.laundry.length,
@@ -1004,8 +1006,24 @@
     return PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority) || new Date(b.created_at) - new Date(a.created_at);
   }
 
+  function sortTodayTasks(a, b) {
+    const overdueDiff = Number(isOverdueTask(b)) - Number(isOverdueTask(a));
+    if (overdueDiff) return overdueDiff;
+    if (a.due_date && b.due_date && a.due_date !== b.due_date) return parseDate(a.due_date) - parseDate(b.due_date);
+    return sortByPriority(a, b);
+  }
+
   function sortByDateThenPriority(a, b) {
     return parseDate(a.due_date) - parseDate(b.due_date) || sortByPriority(a, b);
+  }
+
+  function isTodayTask(task) {
+    if (!task || task.status !== "Da fare") return false;
+    return isOverdueTask(task) || task.due_date === todayKey() || (!task.due_date && task.priority === "Essenziale");
+  }
+
+  function isOverdueTask(task) {
+    return Boolean(task && task.status === "Da fare" && task.due_date && task.due_date < todayKey());
   }
 
   function nextRecurrenceDate(fromDate, recurrence) {

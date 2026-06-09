@@ -440,27 +440,52 @@
   function renderShopping() {
     const packedIds = activePackedShoppingIds();
     const items = state.shopping
-      .filter((item) => !packedIds.has(item.id))
-      .sort((a, b) => (a.status === b.status ? 0 : a.status === "Da comprare" ? -1 : 1));
+      .filter((item) => !packedIds.has(item.id));
+    const todoItems = items.filter((item) => item.status !== "Comprato");
+    const boughtItems = items
+      .filter((item) => item.status === "Comprato")
+      .sort((a, b) => dateValue(b.bought_at || b.updated_at || b.created_at) - dateValue(a.bought_at || a.updated_at || a.created_at));
     $("#shopping-trips").innerHTML = state.shoppingTrips.length
       ? state.shoppingTrips.map(renderShoppingTripCard).join("")
       : "";
-    $("#shopping-list").innerHTML = items.length
-      ? items.map((item) => `
-          <article class="card" data-id="${item.id}">
-            <h3>${escapeHtml(item.title)}</h3>
-            <div class="meta">
-              <span class="badge">${escapeHtml(item.category)}</span>
-              <span class="badge ${shoppingStatusClass(item.status)}">${escapeHtml(item.status)}</span>
-            </div>
-            ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
-            <div class="card-actions">
-              <button class="primary" type="button" data-action="shopping-toggle" data-id="${item.id}">${item.status === "Comprato" ? "Rimetti in lista" : "Preso"}</button>
-              <button class="ghost" type="button" data-action="shopping-delete" data-id="${item.id}">Elimina</button>
-            </div>
-          </article>
-        `).join("")
-      : empty("La lista e' vuota. Per ora non manca niente.");
+    $("#shopping-list").innerHTML = [
+      todoItems.length
+        ? todoItems.map(renderShoppingItemCard).join("")
+        : empty(boughtItems.length ? "Niente da comprare adesso. Gli articoli gia' comprati sono sotto." : "La lista e' vuota. Per ora non manca niente."),
+      renderBoughtShoppingGroup(boughtItems),
+    ].filter(Boolean).join("");
+  }
+
+  function renderShoppingItemCard(item) {
+    return `
+      <article class="card" data-id="${item.id}">
+        <h3>${escapeHtml(item.title)}</h3>
+        <div class="meta">
+          <span class="badge">${escapeHtml(item.category)}</span>
+          <span class="badge ${shoppingStatusClass(item.status)}">${escapeHtml(item.status)}</span>
+        </div>
+        ${item.note ? `<p class="note">${escapeHtml(item.note)}</p>` : ""}
+        <div class="card-actions">
+          <button class="primary" type="button" data-action="shopping-toggle" data-id="${item.id}">${item.status === "Comprato" ? "Rimetti in lista" : "Preso"}</button>
+          <button class="ghost" type="button" data-action="shopping-delete" data-id="${item.id}">Elimina</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderBoughtShoppingGroup(items) {
+    if (!items.length) return "";
+    return `
+      <details class="shopping-bought-group">
+        <summary class="shopping-bought-summary">
+          <span>Gia' comprati</span>
+          <strong>${items.length}</strong>
+        </summary>
+        <div class="shopping-bought-list">
+          ${items.map(renderShoppingItemCard).join("")}
+        </div>
+      </details>
+    `;
   }
 
   function renderShoppingTripCard(trip) {
@@ -1131,6 +1156,12 @@
 
   function formatShortDate(value) {
     return new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(parseDate(value));
+  }
+
+  function dateValue(value) {
+    if (!value) return 0;
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
   }
 
   function taskDateLabel(task) {

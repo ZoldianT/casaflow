@@ -532,6 +532,46 @@ textarea {
   color: #23543a;
 }
 
+.shopping-bought-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf4;
+  box-shadow: var(--shadow);
+}
+
+.shopping-bought-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.shopping-bought-summary strong {
+  display: inline-grid;
+  min-width: 30px;
+  min-height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: #d9f0df;
+  color: #23543a;
+  font-size: 13px;
+}
+
+.shopping-bought-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.shopping-bought-group[open] .shopping-bought-summary {
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
 .note {
   margin: 8px 0 0;
   color: var(--muted);

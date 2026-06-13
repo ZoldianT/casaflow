@@ -756,7 +756,13 @@
     const completedAt = new Date().toISOString();
     const { error } = await state.client.from("tasks").update({ status: "Fatto", completed_at: completedAt }).eq("id", id);
     if (error) return showActionError("Non riesco a segnare il task come fatto.");
-    const awardError = await awardTaskAchievement(task, completedAt);
+    const awardError = await awardAchievement({
+      sourceType: "task",
+      sourceId: task.id,
+      title: task.title,
+      category: task.category,
+      assignedTo: task.assigned_to
+    }, completedAt);
     if (awardError) return showActionError("Task completato, ma non riesco ad assegnare il riconoscimento.");
     if (task.recurrence !== "Nessuna") {
       const nextDate = nextRecurrenceDate(task.due_date || todayKey(), task.recurrence);
@@ -846,12 +852,12 @@
       .update({ status: "Fatto", completed_at: now })
       .eq("id", trip.task_id);
     if (taskError) return showActionError("Spesa chiusa, ma non riesco a completare il task.");
-    const task = state.tasks.find((item) => item.id === trip.task_id);
-    const awardError = await awardTaskAchievement(task || {
-      id: trip.task_id,
+    const awardError = await awardAchievement({
+      sourceType: "shopping_trip",
+      sourceId: trip.id,
       title: trip.title,
       category: "Spesa",
-      assigned_to: trip.assigned_to
+      assignedTo: trip.assigned_to
     }, now);
     if (awardError) return showActionError("Spesa chiusa, ma non riesco ad assegnare il riconoscimento.");
 
@@ -905,9 +911,21 @@
     if (!item) return;
     setSyncStatus("saving", "Salvataggio...");
     const next = LAUNDRY_STATUSES[LAUNDRY_STATUSES.indexOf(item.laundry_status) + 1] || "Fatto";
-    const payload = { laundry_status: next, completed_at: next === "Fatto" ? new Date().toISOString() : null };
+    const completedAt = next === "Fatto" ? new Date().toISOString() : null;
+    const payload = { laundry_status: next, completed_at: completedAt };
     const { error } = await state.client.from("laundry_items").update(payload).eq("id", id);
     if (error) return showActionError("Non riesco ad aggiornare il bucato.");
+    if (next === "Fatto") {
+      const awardError = await awardAchievement({
+        sourceType: "laundry_item",
+        sourceId: item.id,
+        title: item.title,
+        category: "Bucato",
+        assignedTo: item.assigned_to
+      }, completedAt);
+      if (awardError) return showActionError("Bucato completato, ma non riesco ad assegnare il riconoscimento.");
+      showToast("Bucato chiuso. Lavatrice domata.");
+    }
     await loadAll();
   }
 
@@ -1087,29 +1105,36 @@
     return `${count} ${count === 1 ? "giro" : "giri"}: ${firstStatus.toLowerCase()}`;
   }
 
-  async function awardTaskAchievement(task, awardedAt) {
-    if (!task) return null;
-    const badge = achievementBadgeFor(task.category);
-    const dayCount = await achievementCountForDay(awardedAt);
-    const level = achievementLevel(dayCount + 1);
+  async function awardAchievement(entry, awardedAt) {
+    if (!entry) return null;
+    const badge = achievementBadgeFor(entry.category);
+    const [dayCount, badgeCount] = await Promise.all([
+      achievementCountForDay(awardedAt),
+      achievementCountForBadge(badge.code)
+    ]);
+    const nextBadgeCount = badgeCount + 1;
+    const milestone = achievementMilestone(nextBadgeCount, badge.title);
+    const level = milestone || achievementLevel(dayCount + 1);
     const actor = state.member ? state.member.display_name : "Casa condivisa";
     const payload = {
       household_id: state.householdId,
-      task_id: task.id,
-      task_title: task.title,
-      task_category: task.category,
-      assigned_to: task.assigned_to || "Chi puo",
+      task_id: entry.sourceType === "task" ? entry.sourceId : null,
+      source_type: entry.sourceType,
+      source_id: entry.sourceId,
+      task_title: entry.title,
+      task_category: entry.category,
+      assigned_to: entry.assignedTo || "Chi puo",
       awarded_to: state.session.user.id,
       awarded_to_name: actor,
       badge_code: badge.code,
       badge_title: badge.title,
       badge_tone: badge.tone,
       level_title: level,
-      message: `${actor} ha sbloccato: ${badge.title}. ${achievementMessage(task.category)}`
+      message: achievementEventMessage(actor, badge.title, entry.category, nextBadgeCount, milestone)
     };
     const { error } = await state.client
       .from("achievement_events")
-      .upsert(payload, { onConflict: "household_id,task_id,badge_code" });
+      .upsert(payload, { onConflict: "household_id,source_type,source_id,badge_code" });
     return error;
   }
 
@@ -1122,6 +1147,17 @@
       .eq("household_id", state.householdId)
       .gte("awarded_at", day.toISOString())
       .lt("awarded_at", nextDay.toISOString());
+    if (error) return 0;
+    return count || 0;
+  }
+
+  async function achievementCountForBadge(badgeCode) {
+    const { count, error } = await state.client
+      .from("achievement_events")
+      .select("id", { count: "exact", head: true })
+      .eq("household_id", state.householdId)
+      .eq("awarded_to", state.session.user.id)
+      .eq("badge_code", badgeCode);
     if (error) return 0;
     return count || 0;
   }
@@ -1146,6 +1182,34 @@
     if (count >= 3) return "Casa che gira";
     if (count >= 2) return "Ritmo trovato";
     return "Scintilla";
+  }
+
+  function achievementMilestone(count, badgeTitle) {
+    if (![5, 10, 20].includes(count)) return "";
+    if (count === 20) return `20x ${badgeTitle}`;
+    if (count === 10) return `10x ${badgeTitle}`;
+    return `5x ${badgeTitle}`;
+  }
+
+  function achievementEventMessage(actor, badgeTitle, category, count, milestone) {
+    if (milestone) {
+      return `${actor} ha raggiunto ${milestone}. ${achievementMilestoneMessage(category, count)}`;
+    }
+    return `${actor} ha sbloccato: ${badgeTitle} (${count} totali). ${achievementMessage(category)}`;
+  }
+
+  function achievementMilestoneMessage(category, count) {
+    const messages = {
+      "Spesa": `${count} spese chiuse: il frigo ormai saluta per nome.`,
+      "Bucato": `${count} bucati completati: il cesto ha perso un altro round.`,
+      "Bimba": `${count} missioni bimba completate: logistica familiare in assetto.`,
+      "Pulizie": `${count} pulizie chiuse: il caos e' sotto osservazione.`,
+      "Cucina": `${count} giri cucina completati: piano di lavoro ancora vivo.`,
+      "Casa / lavoretti": `${count} lavoretti sistemati: casa un filo piu' governabile.`,
+      "Amministrativo": `${count} pratiche archiviate: burocrazia messa all'angolo.`,
+      "Altro": `${count} cose fatte: peso tolto, senza cerimonie inutili.`
+    };
+    return messages[category] || messages.Altro;
   }
 
   function achievementMessage(category) {

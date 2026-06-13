@@ -346,6 +346,11 @@ textarea {
   color: #37435e;
 }
 
+.reward-badge.sera {
+  background: #f7d77b;
+  color: #5b4210;
+}
+
 .reward-badge.calm {
   background: #e8f3d6;
   color: #3f5a22;
@@ -668,6 +673,85 @@ textarea {
   grid-template-columns: 1fr;
   gap: 8px;
   margin-top: 10px;
+}
+
+.evening-summary,
+.evening-bridge {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.evening-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf4;
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.evening-hero.is-complete {
+  background: #fbfff7;
+}
+
+.evening-hero h3,
+.evening-lane h3,
+.evening-routine h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.evening-hero p,
+.evening-lane p,
+.evening-task p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.evening-score {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 58px;
+  min-height: 58px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 900;
+}
+
+.evening-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.evening-task {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.evening-task strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.evening-task-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 8px;
+}
+
+.evening-task-actions button {
+  min-width: 0;
+  padding-inline: 8px;
+  font-size: 13px;
 }
 
 .progress-line {

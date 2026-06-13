@@ -9,14 +9,14 @@
   const RECURRENCES = ["Nessuna", "Giornaliera", "Settimanale", "Ogni 2 settimane", "Mensile"];
   const LAUNDRY_STATUSES = ["Da lavare", "Lavatrice da avviare", "Da stendere / asciugare", "Da piegare", "Da mettere a posto", "Fatto"];
   const RESET_ITEMS = [
-    "cucina libera",
-    "tavolo sgombro",
-    "giochi bimba raccolti",
-    "vestiti nel cesto",
-    "lavastoviglie caricata o svuotata",
-    "cose per domani preparate"
+    "Cucina ripristinata",
+    "Tavolo liberato",
+    "Cose di Chiara pronte",
+    "Vestiti e bucato sotto controllo",
+    "Spesa urgente controllata",
+    "Prima cosa di domani scelta"
   ];
-  const SURVIVAL_RESET_ITEMS = ["cucina libera", "giochi bimba raccolti", "cose per domani preparate"];
+  const SURVIVAL_RESET_ITEMS = ["Cucina ripristinata", "Cose di Chiara pronte", "Prima cosa di domani scelta"];
 
   const state = {
     client: null,
@@ -293,7 +293,7 @@
       renderTodayMetric("Oggi", hiddenText, overdueCount ? `${overdueCount} ${overdueCount === 1 ? "arretrato riportato" : "arretrati riportati"}` : nextTodayHint(visibleTasks)),
       renderTodayMetric("Spesa urgente", String(urgentShopping.length), urgentShopping.length ? urgentShopping.slice(0, 2).map((item) => item.title).join(", ") : "Niente di critico"),
       renderTodayMetric("Bucato", String(laundryActive), laundryActive ? nextLaundryHint() : "Niente da seguire"),
-      renderTodayMetric("Reset sera", String(resetPending), resetPending ? "Checklist ancora aperta" : "Gia' a posto")
+      renderTodayMetric("Sera", String(resetPending), resetPending ? "Routine ancora aperta" : "Giornata chiusa")
     ].join("");
   }
 
@@ -336,7 +336,7 @@
       return;
     }
     const resetPending = state.reset.filter((item) => !item.is_done).length;
-    box.innerHTML = `<strong>Prossima cosa utile</strong><p>${resetPending ? "Stasera: reset casa." : "Per ora e' tutto leggero."}</p>`;
+    box.innerHTML = `<strong>Prossima cosa utile</strong><p>${resetPending ? "Stasera: chiudere la giornata." : "Per ora e' tutto leggero."}</p>`;
   }
 
   function renderTodayDoneHistory() {
@@ -373,8 +373,7 @@
   }
 
   function renderTomorrow() {
-    const tomorrow = dateKey(addDays(new Date(), 1));
-    const tasks = state.tasks.filter((task) => task.status === "Da fare" && task.due_date === tomorrow).sort(sortByPriority);
+    const tasks = tomorrowTasks();
     $("#tomorrow-list").innerHTML = tasks.length
       ? `<section class="group"><h3>Domani</h3><div class="group-items">${tasks.map(renderTaskCard).join("")}</div></section>`
       : empty("Domani e' ancora leggero. Lo prepariamo con calma.");
@@ -570,14 +569,84 @@
   function renderReset() {
     const visible = state.survival ? state.reset.filter((item) => SURVIVAL_RESET_ITEMS.includes(item.label)) : state.reset;
     const hiddenBySurvival = state.reset.length - visible.length;
+    renderEveningSummary(visible, hiddenBySurvival);
+    renderEveningBridge();
     $("#reset-list").innerHTML = visible.length
-      ? visible.map((item) => `
-          <label class="check-row ${item.is_done ? "is-done" : ""}">
-            <input type="checkbox" data-action="reset-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
-            <span>${escapeHtml(item.label)}</span>
-          </label>
-        `).join("")
-      : empty(state.survival && hiddenBySurvival ? `${hiddenBySurvival} voci leggere del reset sono nascoste dalla sopravvivenza.` : "Il reset di oggi e' pronto appena serve.");
+      ? `
+        <section class="group evening-routine">
+          <h3>Routine da 5 minuti</h3>
+          <div class="group-items">
+            ${visible.map((item) => `
+              <label class="check-row ${item.is_done ? "is-done" : ""}">
+                <input type="checkbox" data-action="reset-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
+                <span>${escapeHtml(item.label)}</span>
+              </label>
+            `).join("")}
+          </div>
+        </section>
+      `
+      : empty(state.survival && hiddenBySurvival ? `${hiddenBySurvival} voci leggere della sera sono nascoste dalla sopravvivenza.` : "La routine serale di oggi e' pronta appena serve.");
+  }
+
+  function renderEveningSummary(visible, hiddenBySurvival) {
+    const done = visible.filter((item) => item.is_done).length;
+    const total = visible.length;
+    const award = total > 0 && done === total ? eveningAwardToday() : null;
+    const tomorrowCount = tomorrowTasks().length;
+    $("#evening-summary").innerHTML = `
+      <section class="evening-hero ${award ? "is-complete" : ""}">
+        <div>
+          <p class="eyebrow">Sera</p>
+          <h3>${award ? "Casa in assetto" : "Chiudiamo senza trascinarci tutto a domani"}</h3>
+          <p>${award ? escapeHtml(award.message) : `${done}/${total || 0} cose fatte${hiddenBySurvival ? `, ${hiddenBySurvival} leggere nascoste` : ""}. Domani ha ${tomorrowCount} ${tomorrowCount === 1 ? "cosa" : "cose"} gia' in agenda.`}</p>
+        </div>
+        <span class="evening-score">${total ? Math.round((done / total) * 100) : 0}%</span>
+      </section>
+    `;
+  }
+
+  function renderEveningBridge() {
+    const openToday = state.tasks
+      .filter((task) => isTodayTask(task) && task.status === "Da fare")
+      .sort(sortTodayTasks)
+      .slice(0, 4);
+    const tomorrow = tomorrowTasks().slice(0, 4);
+    const html = [
+      renderEveningTaskLane("Da decidere prima di chiudere", openToday, "today"),
+      renderEveningTaskLane("Gia' in agenda domani", tomorrow, "tomorrow")
+    ].join("");
+    $("#evening-bridge").innerHTML = html || "";
+  }
+
+  function renderEveningTaskLane(title, tasks, lane) {
+    if (!tasks.length) {
+      return `
+        <section class="group evening-lane">
+          <h3>${escapeHtml(title)}</h3>
+          <p class="soft">${lane === "today" ? "Nessun residuo da trascinare." : "Domani e' ancora leggero."}</p>
+        </section>
+      `;
+    }
+    return `
+      <section class="group evening-lane">
+        <h3>${escapeHtml(title)}</h3>
+        <div class="evening-task-list">
+          ${tasks.map((task) => `
+            <article class="evening-task">
+              <div>
+                <strong>${escapeHtml(task.title)}</strong>
+                <p>${escapeHtml(task.assigned_to)} - ${escapeHtml(taskDateLabel(task))}</p>
+              </div>
+              <div class="evening-task-actions">
+                ${lane === "today" ? `<button class="ghost" type="button" data-action="task-move-tomorrow" data-id="${task.id}">Domani</button>` : ""}
+                <button class="primary" type="button" data-action="task-done" data-id="${task.id}">Fatto</button>
+                <button class="ghost" type="button" data-action="task-edit" data-id="${task.id}">Modifica</button>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
   }
 
   async function saveTask(event) {
@@ -713,6 +782,7 @@
     const id = button.dataset.id;
     if (action === "task-done") return completeTask(id);
     if (action === "task-schedule-tomorrow") return moveTaskDate(id, 1, new Date());
+    if (action === "task-move-tomorrow") return scheduleTaskForTomorrow(id);
     if (action === "task-earlier") return moveTaskDate(id, -1);
     if (action === "task-later") return moveTaskDate(id, 1);
     if (action === "task-edit") return openTaskDialog(state.tasks.find((task) => task.id === id));
@@ -736,6 +806,10 @@
     setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("reset_checklist").update({ is_done: event.target.checked }).eq("id", event.target.dataset.id);
     if (error) return showActionError("Non riesco ad aggiornare il reset.");
+    if (event.target.checked) {
+      const awardError = await awardEveningResetIfComplete(event.target.dataset.id);
+      if (awardError) return showActionError("Routine chiusa, ma non riesco ad assegnare il riconoscimento.");
+    }
     await loadAll();
   }
 
@@ -798,6 +872,10 @@
     if (!baseDate) return;
     const nextDate = dateKey(addDays(baseDate, days));
     return updateTask(id, { due_date: nextDate, status: "Da fare", completed_at: null });
+  }
+
+  async function scheduleTaskForTomorrow(id) {
+    return updateTask(id, { due_date: dateKey(addDays(new Date(), 1)), status: "Da fare", completed_at: null });
   }
 
   async function toggleShopping(id) {
@@ -947,6 +1025,21 @@
     await loadAll();
   }
 
+  async function awardEveningResetIfComplete(toggledId) {
+    const rows = state.reset.map((item) => item.id === toggledId ? { ...item, is_done: true } : item);
+    if (!rows.length || rows.some((item) => !item.is_done)) return null;
+    const sourceId = rows[0].id;
+    const error = await awardAchievement({
+      sourceType: "evening_reset",
+      sourceId,
+      title: `Sera ${formatShortDate(todayKey())}`,
+      category: "Sera",
+      assignedTo: "Chi puo"
+    }, new Date().toISOString());
+    if (!error) showToast("Casa in assetto. Domani parte piu' leggero.");
+    return error;
+  }
+
   function openContextualAdd() {
     if (state.activeView === "shopping") {
       $("#shopping-title").focus();
@@ -986,7 +1079,7 @@
       plan: todo.filter((task) => task.due_date === tomorrow || (task.due_date && task.due_date > tomorrow && task.due_date <= weekEnd) || (!task.due_date && task.priority !== "Essenziale")).length,
       shopping: state.shopping.filter((item) => item.status === "Da comprare" && !packedIds.has(item.id)).length + state.shoppingTrips.length,
       laundry: state.laundry.length,
-      reset: state.reset.filter((item) => !item.is_done).length
+      reset: state.reset.filter((item) => !item.is_done).length + todo.filter(isTodayTask).length
     };
   }
 
@@ -1033,6 +1126,21 @@
 
   function sortByDateThenPriority(a, b) {
     return parseDate(a.due_date) - parseDate(b.due_date) || sortByPriority(a, b);
+  }
+
+  function tomorrowTasks() {
+    const tomorrow = dateKey(addDays(new Date(), 1));
+    return state.tasks
+      .filter((task) => task.status === "Da fare" && task.due_date === tomorrow)
+      .sort(sortByPriority);
+  }
+
+  function eveningAwardToday() {
+    return state.achievements.find((event) => (
+      event.badge_code === "casa_in_assetto" &&
+      event.awarded_at &&
+      dateKey(new Date(event.awarded_at)) === todayKey()
+    ));
   }
 
   function isTodayTask(task) {
@@ -1108,6 +1216,9 @@
   async function awardAchievement(entry, awardedAt) {
     if (!entry) return null;
     const badge = achievementBadgeFor(entry.category);
+    const existing = await achievementExistsForSource(entry.sourceType, entry.sourceId, badge.code);
+    if (existing.error) return existing.error;
+    if (existing.exists) return null;
     const [dayCount, badgeCount] = await Promise.all([
       achievementCountForDay(awardedAt),
       achievementCountForBadge(badge.code)
@@ -1136,6 +1247,18 @@
       .from("achievement_events")
       .upsert(payload, { onConflict: "household_id,source_type,source_id,badge_code" });
     return error;
+  }
+
+  async function achievementExistsForSource(sourceType, sourceId, badgeCode) {
+    const { data, error } = await state.client
+      .from("achievement_events")
+      .select("id")
+      .eq("household_id", state.householdId)
+      .eq("source_type", sourceType)
+      .eq("source_id", sourceId)
+      .eq("badge_code", badgeCode)
+      .maybeSingle();
+    return { exists: Boolean(data), error };
   }
 
   async function achievementCountForDay(value) {
@@ -1171,6 +1294,7 @@
       "Pulizie": { code: "domatore_di_caos", title: "Domatore di caos", tone: "pulizie" },
       "Casa / lavoretti": { code: "angolo_salvato", title: "Angolo salvato", tone: "casa" },
       "Amministrativo": { code: "burocrazia_addomesticata", title: "Burocrazia addomesticata", tone: "admin" },
+      "Sera": { code: "casa_in_assetto", title: "Casa in assetto", tone: "sera" },
       "Altro": { code: "peso_tolto", title: "Peso tolto", tone: "calm" }
     };
     return badges[category] || badges.Altro;
@@ -1207,6 +1331,7 @@
       "Cucina": `${count} giri cucina completati: piano di lavoro ancora vivo.`,
       "Casa / lavoretti": `${count} lavoretti sistemati: casa un filo piu' governabile.`,
       "Amministrativo": `${count} pratiche archiviate: burocrazia messa all'angolo.`,
+      "Sera": `${count} sere chiuse: domani parte con meno attrito.`,
       "Altro": `${count} cose fatte: peso tolto, senza cerimonie inutili.`
     };
     return messages[category] || messages.Altro;
@@ -1221,6 +1346,7 @@
       "Pulizie": "Il caos arretra di qualche centimetro.",
       "Casa / lavoretti": "Un angolo di casa torna a respirare.",
       "Amministrativo": "Una pratica in meno a ronzare in testa.",
+      "Sera": "Giornata chiusa, domani un po' meno in salita.",
       "Altro": "Una cosa fatta pesa subito meno."
     };
     return messages[category] || messages.Altro;

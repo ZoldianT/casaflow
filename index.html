@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CasaFlow</title>
-  <link rel="stylesheet" href="style.css?v=20260613-achievements">
+  <link rel="stylesheet" href="style.css?v=20260613-evening">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -121,11 +121,13 @@
     <section id="reset-section" class="view" data-view="reset">
       <div class="section-top">
         <div>
-          <p class="eyebrow">Reset</p>
-          <h2>Reset casa</h2>
+          <p class="eyebrow">Chiusura giornata</p>
+          <h2>Sera</h2>
         </div>
-        <button id="reset-today-btn" class="ghost" type="button">Ricomincia checklist</button>
+        <button id="reset-today-btn" class="ghost" type="button">Ricomincia</button>
       </div>
+      <div id="evening-summary" class="evening-summary"></div>
+      <div id="evening-bridge" class="evening-bridge"></div>
       <div id="reset-list" class="check-list"></div>
     </section>
 
@@ -136,7 +138,7 @@
       <button class="nav-btn" type="button" data-target="plan"><span class="nav-label">Pianifica</span><span class="nav-count" aria-label="0 cose">0</span></button>
       <button class="nav-btn" type="button" data-target="shopping"><span class="nav-label">Spesa</span><span class="nav-count" aria-label="0 cose">0</span></button>
       <button class="nav-btn" type="button" data-target="laundry"><span class="nav-label">Bucato</span><span class="nav-count" aria-label="0 cose">0</span></button>
-      <button class="nav-btn" type="button" data-target="reset"><span class="nav-label">Reset</span><span class="nav-count" aria-label="0 cose">0</span></button>
+      <button class="nav-btn" type="button" data-target="reset"><span class="nav-label">Sera</span><span class="nav-count" aria-label="0 cose">0</span></button>
     </nav>
   </div>
 
@@ -198,7 +200,7 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=20260613-achievements"></script>
-  <script src="app.js?v=20260613-achievements"></script>
+  <script src="config.js?v=20260613-evening"></script>
+  <script src="app.js?v=20260613-evening"></script>
 </body>
 </html>

@@ -679,16 +679,34 @@
     event.preventDefault();
     const title = $("#shopping-title").value.trim();
     if (!title) return showToast("Inserisci cosa manca.");
+    const category = $("#shopping-category").value;
+    const previousItem = findSimilarBoughtShoppingItem(title, category);
+    if (previousItem) {
+      const sameItem = window.confirm(`Sembra simile a "${previousItem.title}" (${previousItem.category}), gia' comprato in passato.\n\nVuoi rimettere in lista quello invece di crearne uno nuovo?`);
+      if (sameItem) return restoreShoppingItem(previousItem.id);
+    }
     setSyncStatus("saving", "Salvataggio...");
     const { error } = await state.client.from("shopping_items").insert({
       household_id: state.householdId,
       title,
-      category: $("#shopping-category").value,
+      category,
       status: "Da comprare",
       created_by: state.session.user.id
     });
     if (error) return showActionError("Non riesco ad aggiungere questa cosa alla spesa.");
     $("#shopping-title").value = "";
+    await loadAll();
+  }
+
+  async function restoreShoppingItem(id) {
+    setSyncStatus("saving", "Salvataggio...");
+    const { error } = await state.client
+      .from("shopping_items")
+      .update({ status: "Da comprare", bought_at: null })
+      .eq("id", id);
+    if (error) return showActionError("Non riesco a rimettere in lista l'articolo gia' comprato.");
+    $("#shopping-title").value = "";
+    showToast("Rimesso in lista senza duplicare.");
     await loadAll();
   }
 
@@ -1395,6 +1413,53 @@
     if (status === "Da comprare") return "shopping-todo";
     if (status === "Comprato") return "shopping-done";
     return "";
+  }
+
+  function findSimilarBoughtShoppingItem(title, category) {
+    return state.shopping
+      .filter((item) => item.status === "Comprato")
+      .map((item) => ({ item, score: shoppingSimilarityScore(title, item.title, category, item.category) }))
+      .filter((match) => match.score >= 0.72)
+      .sort((a, b) => b.score - a.score || dateValue(b.item.bought_at || b.item.updated_at || b.item.created_at) - dateValue(a.item.bought_at || a.item.updated_at || a.item.created_at))
+      .map((match) => match.item)[0] || null;
+  }
+
+  function shoppingSimilarityScore(inputTitle, existingTitle, inputCategory, existingCategory) {
+    const input = normalizeShoppingText(inputTitle);
+    const existing = normalizeShoppingText(existingTitle);
+    if (!input || !existing) return 0;
+    if (input === existing) return 1;
+    const categoryBonus = inputCategory === existingCategory ? 0.08 : 0;
+    const containsScore = input.includes(existing) || existing.includes(input) ? 0.86 : 0;
+    const distance = levenshteinDistance(input, existing);
+    const fuzzyScore = 1 - (distance / Math.max(input.length, existing.length));
+    return Math.min(1, Math.max(containsScore, fuzzyScore) + categoryBonus);
+  }
+
+  function normalizeShoppingText(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 ]/g, " ")
+      .replace(/\b(il|lo|la|i|gli|le|un|uno|una|di|da|del|della|delle|dei|al|alla|per)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function levenshteinDistance(a, b) {
+    const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+    for (let i = 0; i < a.length; i += 1) {
+      const current = [i + 1];
+      for (let j = 0; j < b.length; j += 1) {
+        const insert = current[j] + 1;
+        const remove = previous[j + 1] + 1;
+        const replace = previous[j] + (a[i] === b[j] ? 0 : 1);
+        current.push(Math.min(insert, remove, replace));
+      }
+      previous.splice(0, previous.length, ...current);
+    }
+    return previous[b.length];
   }
 
   function empty(text) {

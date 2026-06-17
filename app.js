@@ -903,21 +903,31 @@
     }
     setSyncStatus("saving", "Salvataggio...");
     const now = new Date().toISOString();
-    const sourceIds = (trip.shopping_trip_items || []).map((item) => item.shopping_item_id).filter(Boolean);
+    const tripItems = trip.shopping_trip_items || [];
+    const boughtSourceIds = tripItems
+      .filter((item) => item.is_done)
+      .map((item) => item.shopping_item_id)
+      .filter(Boolean);
+    const stillNeededSourceIds = tripItems
+      .filter((item) => !item.is_done)
+      .map((item) => item.shopping_item_id)
+      .filter(Boolean);
 
-    if (sourceIds.length) {
+    if (boughtSourceIds.length) {
       const { error: shoppingError } = await state.client
         .from("shopping_items")
         .update({ status: "Comprato", bought_at: now })
-        .in("id", sourceIds);
+        .in("id", boughtSourceIds);
       if (shoppingError) return showActionError("Non riesco a chiudere la spesa.");
     }
 
-    const { error: itemsError } = await state.client
-      .from("shopping_trip_items")
-      .update({ is_done: true })
-      .eq("trip_id", id);
-    if (itemsError) return showActionError("Non riesco a chiudere la spesa.");
+    if (stillNeededSourceIds.length) {
+      const { error: stillNeededError } = await state.client
+        .from("shopping_items")
+        .update({ status: "Da comprare", bought_at: null })
+        .in("id", stillNeededSourceIds);
+      if (stillNeededError) return showActionError("Non riesco a lasciare in lista gli articoli non comprati.");
+    }
 
     const { error: tripError } = await state.client
       .from("shopping_trips")
@@ -1114,7 +1124,12 @@
   }
 
   function sortByPriority(a, b) {
-    return PRIORITIES.indexOf(a.priority) - PRIORITIES.indexOf(b.priority) || new Date(b.created_at) - new Date(a.created_at);
+    return priorityRank(a) - priorityRank(b) || new Date(b.created_at) - new Date(a.created_at);
+  }
+
+  function priorityRank(task) {
+    const index = PRIORITIES.indexOf(task.priority);
+    return index === -1 ? PRIORITIES.length : index;
   }
 
   function sortTodayTasks(a, b) {

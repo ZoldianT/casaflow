@@ -198,7 +198,7 @@
         state.client.from("shopping_trips").select("*, shopping_trip_items(*)").eq("household_id", state.householdId).eq("status", "Da fare").order("created_at", { ascending: false }),
         state.client.from("laundry_items").select("*").eq("household_id", state.householdId).neq("laundry_status", "Fatto").order("created_at", { ascending: false }),
         state.client.from("reset_checklist").select("*").eq("household_id", state.householdId).eq("reset_date", todayKey()).order("created_at", { ascending: true }),
-        state.client.from("achievement_events").select("*").eq("household_id", state.householdId).order("awarded_at", { ascending: false }).limit(50)
+        state.client.from("achievement_events").select("*").eq("household_id", state.householdId).order("awarded_at", { ascending: false }).limit(250)
       ]);
       [tasks, shopping, trips, laundry, reset, achievements].forEach((result) => {
         if (result.error) throw result.error;
@@ -263,6 +263,7 @@
     tasks.sort(sortTodayTasks);
     const hiddenBySurvival = todayTasks.length - tasks.length;
     renderTodayDashboard(todayTasks, tasks);
+    renderTodayAchievements();
     renderTodayNextAction(tasks);
     renderSurvivalFilterNote(hiddenBySurvival);
     renderTodayDoneHistory();
@@ -304,6 +305,58 @@
         <strong>${escapeHtml(value)}</strong>
         <p>${escapeHtml(hint)}</p>
       </article>
+    `;
+  }
+
+  function renderTodayAchievements() {
+    const box = $("#today-achievements");
+    const streak = achievementStreak();
+    const energy = weeklyHomeEnergy();
+    const nextGoals = nextAchievementGoals().slice(0, 3);
+    box.innerHTML = `
+      <section class="achievement-panel">
+        <div class="achievement-panel-head">
+          <div>
+            <p class="eyebrow">Casa che gira</p>
+            <h3>${escapeHtml(energy.label)}</h3>
+            <p>${escapeHtml(streak.label)}</p>
+          </div>
+          <div class="energy-ring" style="--energy:${energy.score}%">
+            <strong>${energy.score}</strong>
+            <span>energia</span>
+          </div>
+        </div>
+        <div class="achievement-stats">
+          <article>
+            <span>Streak</span>
+            <strong>${streak.days || "-"}</strong>
+            <p>${escapeHtml(streak.hint)}</p>
+          </article>
+          <article>
+            <span>Settimana</span>
+            <strong>${energy.events}</strong>
+            <p>${escapeHtml(energy.hint)}</p>
+          </article>
+        </div>
+        <div class="next-goals">
+          <strong>Prossimi trofei</strong>
+          ${nextGoals.length ? nextGoals.map(renderAchievementGoal).join("") : `<p>Completa qualcosa oggi per accendere i prossimi traguardi.</p>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAchievementGoal(goal) {
+    return `
+      <div class="achievement-goal">
+        <div>
+          <span class="badge reward-badge ${escapeAttr(goal.tone)}">${escapeHtml(goal.title)}</span>
+          <p>${goal.count}/${goal.target} verso ${escapeHtml(goal.targetLabel)}</p>
+        </div>
+        <div class="goal-bar" aria-label="${goal.count} su ${goal.target}">
+          <span style="width:${goal.percent}%"></span>
+        </div>
+      </div>
     `;
   }
 
@@ -509,6 +562,7 @@
   function renderShoppingTripChecklist(trip) {
     const items = trip.shopping_trip_items || [];
     const doneCount = items.filter((item) => item.is_done).length;
+    const percent = items.length ? Math.round((doneCount / items.length) * 100) : 0;
     const groupedItems = SHOPPING_CATEGORIES
       .map((category) => ({
         category,
@@ -516,15 +570,31 @@
       }))
       .filter((group) => group.items.length);
     return `
-      <p class="progress-line">${doneCount}/${items.length} nel carrello</p>
+      <div class="trip-progress">
+        <div>
+          <strong>${doneCount}/${items.length} nel carrello</strong>
+          <p>${shoppingTripProgressLabel(doneCount, items.length)}</p>
+        </div>
+        <span>${percent}%</span>
+      </div>
+      <div class="trip-progress-bar" aria-label="${doneCount} su ${items.length} articoli nel carrello">
+        <span style="width:${percent}%"></span>
+      </div>
+      <div class="trip-category-strip">
+        ${groupedItems.map((group) => {
+          const groupDone = group.items.filter((item) => item.is_done).length;
+          return `<span class="badge ${groupDone === group.items.length ? "shopping-done" : "shopping-todo"}">${escapeHtml(group.category)} ${groupDone}/${group.items.length}</span>`;
+        }).join("")}
+      </div>
       <div class="trip-items">
         ${groupedItems.map((group) => `
           <section class="trip-category">
-            <h4 class="trip-category-title">${escapeHtml(group.category)}</h4>
+            <h4 class="trip-category-title">${escapeHtml(group.category)} <span>${group.items.filter((item) => item.is_done).length}/${group.items.length}</span></h4>
             ${group.items.map((item) => `
               <label class="trip-item ${item.is_done ? "is-done" : ""}">
                 <input type="checkbox" data-action="trip-item-toggle" data-id="${item.id}" ${item.is_done ? "checked" : ""}>
                 <span>${escapeHtml(item.title)}</span>
+                <em>${item.is_done ? "preso" : ""}</em>
               </label>
             `).join("")}
           </section>
@@ -538,6 +608,13 @@
         <button class="ghost" type="submit">Aggiungi</button>
       </form>
     `;
+  }
+
+  function shoppingTripProgressLabel(doneCount, total) {
+    if (!total) return "Carrello vuoto";
+    if (doneCount === total) return "Carrello perfetto";
+    if (doneCount === 0) return "Missione appena iniziata";
+    return `${total - doneCount} ${total - doneCount === 1 ? "cosa resta" : "cose restano"}`;
   }
 
   function renderLaundry() {
@@ -705,6 +782,14 @@
       .update({ status: "Da comprare", bought_at: null })
       .eq("id", id);
     if (error) return showActionError("Non riesco a rimettere in lista l'articolo gia' comprato.");
+    const awardError = await awardAchievement({
+      sourceType: "shopping_item_reuse",
+      sourceId: id,
+      title: "Articolo riusato dalla memoria",
+      category: "Anti doppione",
+      assignedTo: "Chi puo"
+    }, new Date().toISOString());
+    if (awardError) return showActionError("Articolo rimesso in lista, ma non riesco ad assegnare il riconoscimento anti-doppione.");
     $("#shopping-title").value = "";
     showToast("Rimesso in lista senza duplicare.");
     await loadAll();
@@ -966,8 +1051,10 @@
       assignedTo: trip.assigned_to
     }, now);
     if (awardError) return showActionError("Spesa chiusa, ma non riesco ad assegnare il riconoscimento.");
+    const specialAwardError = await awardShoppingTripAchievements(trip, now);
+    if (specialAwardError) return showActionError("Spesa chiusa, ma non riesco ad assegnare tutti i riconoscimenti.");
 
-    showToast("Spesa chiusa. Bel colpo.");
+    showToast(shoppingTripCompletionMessage(trip));
     await loadAll();
   }
 
@@ -1006,10 +1093,53 @@
 
     const lines = [...(trip.shopping_trip_items || []).map((item) => `- ${item.title}`), `- ${title}`];
     await state.client.from("tasks").update({ note: lines.join("\n") }).eq("id", trip.task_id);
+    const awardError = await awardAchievement({
+      sourceType: "shopping_trip_add",
+      sourceId: shoppingItem.id,
+      title,
+      category: "Lista furba",
+      assignedTo: trip.assigned_to
+    }, new Date().toISOString());
+    if (awardError) return showActionError("Articolo creato, ma non riesco ad assegnare il riconoscimento lista furba.");
 
     form.reset();
     showToast("Aggiunto al carrello.");
     await loadAll();
+  }
+
+  async function awardShoppingTripAchievements(trip, awardedAt) {
+    const items = trip.shopping_trip_items || [];
+    const boughtItems = items.filter((item) => item.is_done);
+    const pendingItems = items.filter((item) => !item.is_done);
+    const awards = [{
+      category: pendingItems.length ? "Spesa parziale" : "Spesa perfetta",
+      title: pendingItems.length ? "Missione parziale" : "Carrello pulito"
+    }];
+    if (boughtItems.some((item) => item.category === "Bimba")) {
+      awards.push({ category: "Spesa bimba", title: "Scorta bimba" });
+    }
+    if (boughtItems.some((item) => item.category === "Farmacia")) {
+      awards.push({ category: "Spesa farmacia", title: "Farmacia sotto controllo" });
+    }
+    for (const award of awards) {
+      const error = await awardAchievement({
+        sourceType: "shopping_trip",
+        sourceId: trip.id,
+        title: award.title,
+        category: award.category,
+        assignedTo: trip.assigned_to
+      }, awardedAt);
+      if (error) return error;
+    }
+    return null;
+  }
+
+  function shoppingTripCompletionMessage(trip) {
+    const items = trip.shopping_trip_items || [];
+    const boughtCount = items.filter((item) => item.is_done).length;
+    const pendingCount = items.length - boughtCount;
+    if (!pendingCount) return `Carrello perfetto: ${boughtCount} ${boughtCount === 1 ? "articolo comprato" : "articoli comprati"}.`;
+    return `Missione parziale: ${boughtCount} comprati, ${pendingCount} ancora in lista.`;
   }
 
   async function advanceLaundry(id) {
@@ -1246,6 +1376,73 @@
     return `${count} ${count === 1 ? "giro" : "giri"}: ${firstStatus.toLowerCase()}`;
   }
 
+  function achievementStreak() {
+    const days = new Set(state.achievements
+      .filter((event) => event.awarded_at)
+      .map((event) => dateKey(new Date(event.awarded_at))));
+    let count = 0;
+    let cursor = parseDate(todayKey());
+    while (days.has(dateKey(cursor))) {
+      count += 1;
+      cursor = addDays(cursor, -1);
+    }
+    if (count >= 5) return { days: count, label: `${count} giorni di fila: casa in ritmo`, hint: "Serie calda" };
+    if (count >= 2) return { days: count, label: `${count} giorni di fila`, hint: "Tornare domani la allunga" };
+    if (count === 1) return { days: count, label: "Streak accesa oggi", hint: "Domani vale doppio per l'umore" };
+    return { days: 0, label: "Oggi ancora da accendere", hint: "Basta una cosa fatta" };
+  }
+
+  function weeklyHomeEnergy() {
+    const start = startOfWeek(new Date());
+    const events = state.achievements.filter((event) => event.awarded_at && new Date(event.awarded_at) >= start);
+    const score = Math.min(100, events.length * 12);
+    const label = score >= 80 ? "Settimana governabile" : score >= 50 ? "Casa che gira" : score >= 20 ? "Casa in ripresa" : "Energia da accendere";
+    const hint = events.length ? "Ogni chiusura conta" : "La prima cosa fatta cambia il tono";
+    return { events: events.length, score, label, hint };
+  }
+
+  function nextAchievementGoals() {
+    const counts = achievementCountsByBadgeForCurrentUser();
+    const activeCodes = new Set(state.achievements.map((event) => event.badge_code));
+    return achievementCatalog()
+      .filter((badge) => activeCodes.has(badge.code) || badge.featured)
+      .map((badge) => {
+        const count = counts[badge.code] || 0;
+        const target = nextMilestoneTarget(count);
+        return {
+          ...badge,
+          count,
+          target,
+          targetLabel: `${target}x`,
+          percent: Math.min(100, Math.round((count / target) * 100))
+        };
+      })
+      .filter((goal) => goal.count < goal.target)
+      .sort((a, b) => (b.count / b.target) - (a.count / a.target) || a.target - b.target);
+  }
+
+  function achievementCountsByBadgeForCurrentUser() {
+    return state.achievements.reduce((counts, event) => {
+      if (event.awarded_to !== state.session.user.id) return counts;
+      counts[event.badge_code] = (counts[event.badge_code] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function nextMilestoneTarget(count) {
+    if (count < 5) return 5;
+    if (count < 10) return 10;
+    if (count < 20) return 20;
+    return Math.ceil((count + 1) / 10) * 10;
+  }
+
+  function startOfWeek(date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - day + 1);
+    return start;
+  }
+
   async function awardAchievement(entry, awardedAt) {
     if (!entry) return null;
     const badge = achievementBadgeFor(entry.category);
@@ -1319,18 +1516,29 @@
   }
 
   function achievementBadgeFor(category) {
-    const badges = {
-      "Spesa": { code: "frigo_meno_triste", title: "Frigo meno triste", tone: "spesa" },
-      "Bimba": { code: "logistica_nanetta", title: "Logistica nanetta", tone: "bimba" },
-      "Bucato": { code: "lavatrice_domata", title: "Lavatrice domata", tone: "bucato" },
-      "Cucina": { code: "cucina_che_respira", title: "Cucina che respira", tone: "casa" },
-      "Pulizie": { code: "domatore_di_caos", title: "Domatore di caos", tone: "pulizie" },
-      "Casa / lavoretti": { code: "angolo_salvato", title: "Angolo salvato", tone: "casa" },
-      "Amministrativo": { code: "burocrazia_addomesticata", title: "Burocrazia addomesticata", tone: "admin" },
-      "Sera": { code: "casa_in_assetto", title: "Casa in assetto", tone: "sera" },
-      "Altro": { code: "peso_tolto", title: "Peso tolto", tone: "calm" }
-    };
+    const badges = Object.fromEntries(achievementCatalog().map((badge) => [badge.category, badge]));
     return badges[category] || badges.Altro;
+  }
+
+  function achievementCatalog() {
+    return [
+      { category: "Spesa", code: "frigo_meno_triste", title: "Frigo meno triste", tone: "spesa", featured: true },
+      { category: "Bimba", code: "logistica_nanetta", title: "Logistica nanetta", tone: "bimba", featured: true },
+      { category: "Bucato", code: "lavatrice_domata", title: "Lavatrice domata", tone: "bucato", featured: true },
+      { category: "Cucina", code: "cucina_che_respira", title: "Cucina che respira", tone: "casa" },
+      { category: "Pulizie", code: "domatore_di_caos", title: "Domatore di caos", tone: "pulizie" },
+      { category: "Casa / lavoretti", code: "angolo_salvato", title: "Angolo salvato", tone: "casa" },
+      { category: "Amministrativo", code: "burocrazia_addomesticata", title: "Burocrazia addomesticata", tone: "admin" },
+      { category: "Sera", code: "casa_in_assetto", title: "Casa in assetto", tone: "sera", featured: true },
+      { category: "Spesa perfetta", code: "carrello_pulito", title: "Carrello pulito", tone: "spesa", featured: true },
+      { category: "Spesa parziale", code: "missione_parziale", title: "Missione parziale", tone: "spesa" },
+      { category: "Spesa bimba", code: "scorta_bimba", title: "Scorta bimba", tone: "bimba" },
+      { category: "Spesa farmacia", code: "farmacia_sotto_controllo", title: "Farmacia sotto controllo", tone: "admin" },
+      { category: "Lista furba", code: "lista_furba", title: "Lista furba", tone: "spesa" },
+      { category: "Anti doppione", code: "niente_doppioni", title: "Niente doppioni", tone: "calm" },
+      { category: "Energia casa", code: "energia_casa", title: "Energia casa", tone: "sera", featured: true },
+      { category: "Altro", code: "peso_tolto", title: "Peso tolto", tone: "calm" }
+    ];
   }
 
   function achievementLevel(count) {
@@ -1365,6 +1573,13 @@
       "Casa / lavoretti": `${count} lavoretti sistemati: casa un filo piu' governabile.`,
       "Amministrativo": `${count} pratiche archiviate: burocrazia messa all'angolo.`,
       "Sera": `${count} sere chiuse: domani parte con meno attrito.`,
+      "Spesa perfetta": `${count} carrelli puliti: niente rimasto indietro.`,
+      "Spesa parziale": `${count} missioni parziali chiuse: il resto e' salvo in lista.`,
+      "Spesa bimba": `${count} scorte bimba completate: piccola logistica protetta.`,
+      "Spesa farmacia": `${count} giri farmacia sotto controllo.`,
+      "Lista furba": `${count} aggiunte in corsa: carrello aggiornato senza caos.`,
+      "Anti doppione": `${count} doppioni evitati: memoria della spesa che lavora.`,
+      "Energia casa": `${count} picchi energia: la casa sta tenendo il ritmo.`,
       "Altro": `${count} cose fatte: peso tolto, senza cerimonie inutili.`
     };
     return messages[category] || messages.Altro;
@@ -1380,6 +1595,13 @@
       "Casa / lavoretti": "Un angolo di casa torna a respirare.",
       "Amministrativo": "Una pratica in meno a ronzare in testa.",
       "Sera": "Giornata chiusa, domani un po' meno in salita.",
+      "Spesa perfetta": "Carrello chiuso senza residui. Molto pulito.",
+      "Spesa parziale": "Missione chiusa, e cio' che manca resta in lista.",
+      "Spesa bimba": "Scorte bimba rimesse in sicurezza.",
+      "Spesa farmacia": "Farmacia sotto controllo, ansia un filo piu' bassa.",
+      "Lista furba": "Aggiunta in corsa gestita senza perdere il filo.",
+      "Anti doppione": "Doppione evitato, memoria della lista promossa.",
+      "Energia casa": "Una piccola spinta alla casa che gira.",
       "Altro": "Una cosa fatta pesa subito meno."
     };
     return messages[category] || messages.Altro;

@@ -279,6 +279,121 @@ textarea {
   font-size: 13px;
 }
 
+.today-achievements {
+  margin-bottom: 12px;
+}
+
+.achievement-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf4;
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.achievement-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.achievement-panel-head h3 {
+  margin: 0 0 6px;
+  font-size: 19px;
+}
+
+.achievement-panel-head p,
+.next-goals p,
+.achievement-goal p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.energy-ring {
+  --energy: 0%;
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 74px;
+  min-height: 74px;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, var(--panel) 58%, transparent 59%),
+    conic-gradient(var(--primary) var(--energy), #eadfd1 0);
+  color: var(--ink);
+}
+
+.energy-ring strong {
+  align-self: end;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.energy-ring span {
+  align-self: start;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.achievement-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.achievement-stats article {
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 10px;
+}
+
+.achievement-stats span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.achievement-stats strong {
+  display: block;
+  margin: 3px 0;
+  font-size: 24px;
+}
+
+.achievement-stats p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.next-goals {
+  display: grid;
+  gap: 8px;
+}
+
+.achievement-goal {
+  display: grid;
+  gap: 7px;
+}
+
+.goal-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eadfd1;
+}
+
+.goal-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
 .survival-filter-note {
   margin-bottom: 12px;
 }
@@ -636,16 +751,74 @@ textarea {
   margin-top: 12px;
 }
 
+.trip-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.trip-progress strong {
+  display: block;
+}
+
+.trip-progress p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.trip-progress > span {
+  display: inline-grid;
+  min-width: 48px;
+  min-height: 48px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 900;
+}
+
+.trip-progress-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eadfd1;
+  margin-top: 10px;
+}
+
+.trip-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.trip-category-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
 .trip-category {
   display: grid;
   gap: 7px;
 }
 
 .trip-category-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 0;
   color: var(--muted);
   font-size: 12px;
   text-transform: uppercase;
+}
+
+.trip-category-title span {
+  color: var(--ink);
 }
 
 .trip-item {
@@ -658,9 +831,22 @@ textarea {
   background: var(--bg);
 }
 
+.trip-item em {
+  margin-left: auto;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .trip-item input {
   width: 22px;
   min-height: 22px;
+}
+
+.trip-item.is-done {
+  background: #edf7ef;
 }
 
 .trip-item.is-done span {

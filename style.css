@@ -591,7 +591,8 @@ textarea {
 }
 
 .task-card.is-overdue {
-  border-left: 5px solid #d66b54;
+  border-left: 3px solid #d9c9b9;
+  background: #fffdf8;
 }
 
 .card-dismiss {
@@ -647,8 +648,8 @@ textarea {
 }
 
 .badge.overdue {
-  background: #ffe1d7;
-  color: #7b301a;
+  background: #efe7df;
+  color: var(--muted);
 }
 
 .badge.shopping-todo {

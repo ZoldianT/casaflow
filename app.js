@@ -1281,6 +1281,8 @@
   }
 
   function sortTodayTasks(a, b) {
+    const priorityDiff = priorityRank(a) - priorityRank(b);
+    if (priorityDiff) return priorityDiff;
     const overdueDiff = Number(isOverdueTask(b)) - Number(isOverdueTask(a));
     if (overdueDiff) return overdueDiff;
     if (a.due_date && b.due_date && a.due_date !== b.due_date) return parseDate(a.due_date) - parseDate(b.due_date);

@@ -392,6 +392,28 @@ textarea {
   height: 100%;
   border-radius: inherit;
   background: var(--primary);
+  transition: width 0.7s ease;
+}
+
+.streak-heatmap {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 4px;
+  margin: 12px 0;
+}
+
+.heatmap-day {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: #eadfd1;
+}
+
+.heatmap-day.active {
+  background: var(--primary);
+}
+
+.heatmap-day.is-today {
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .survival-filter-note {
@@ -498,6 +520,42 @@ textarea {
   left: 12px;
   right: 12px;
   box-shadow: var(--shadow);
+}
+
+.toast.toast-pop {
+  animation: toast-in 0.35s ease;
+}
+
+.toast.toast-celebrate {
+  background: linear-gradient(135deg, #ffe1b8, #f7d77b);
+  color: #5b4210;
+  font-weight: 800;
+  animation: toast-celebrate-in 0.5s ease;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-celebrate-in {
+  0% {
+    transform: translateY(-10px) scale(0.96);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(0) scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .view {

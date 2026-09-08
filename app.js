@@ -31,7 +31,8 @@
     shoppingTrips: [],
     laundry: [],
     reset: [],
-    achievements: []
+    achievements: [],
+    seenAchievementIds: null
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -311,8 +312,10 @@
   function renderTodayAchievements() {
     const box = $("#today-achievements");
     const streak = achievementStreak();
+    const heatmap = achievementHeatmap();
     const energy = weeklyHomeEnergy();
     const nextGoals = nextAchievementGoals().slice(0, 3);
+    celebrateNewAchievements();
     box.innerHTML = `
       <section class="achievement-panel">
         <div class="achievement-panel-head">
@@ -338,12 +341,42 @@
             <p>${escapeHtml(energy.hint)}</p>
           </article>
         </div>
+        <div class="streak-heatmap" role="img" aria-label="Giorni con qualcosa di fatto nelle ultime due settimane">
+          ${heatmap.map((day) => `<span class="heatmap-day${day.active ? " active" : ""}${day.isToday ? " is-today" : ""}" title="${escapeAttr(day.label)}"></span>`).join("")}
+        </div>
         <div class="next-goals">
           <strong>Prossimi trofei</strong>
           ${nextGoals.length ? nextGoals.map(renderAchievementGoal).join("") : `<p>Completa qualcosa oggi per accendere i prossimi traguardi.</p>`}
         </div>
       </section>
     `;
+    animateGoalBars(box);
+  }
+
+  function animateGoalBars(scope) {
+    const bars = Array.from(scope.querySelectorAll(".goal-bar span"));
+    if (!bars.length) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bars.forEach((bar) => {
+          bar.style.width = `${bar.dataset.percent}%`;
+        });
+      });
+    });
+  }
+
+  function celebrateNewAchievements() {
+    const currentIds = state.achievements.map((event) => event.id);
+    if (state.seenAchievementIds === null) {
+      state.seenAchievementIds = new Set(currentIds);
+      return;
+    }
+    const freshEvents = state.achievements.filter((event) => !state.seenAchievementIds.has(event.id));
+    currentIds.forEach((id) => state.seenAchievementIds.add(id));
+    if (!freshEvents.length) return;
+    const milestoneEvent = freshEvents.find((event) => /^\d+x /.test(event.level_title || ""));
+    const celebrated = milestoneEvent || freshEvents[0];
+    if (celebrated && celebrated.message) showToast(celebrated.message, { celebrate: Boolean(milestoneEvent) });
   }
 
   function renderAchievementGoal(goal) {
@@ -354,7 +387,7 @@
           <p>${goal.count}/${goal.target} verso ${escapeHtml(goal.targetLabel)}</p>
         </div>
         <div class="goal-bar" aria-label="${goal.count} su ${goal.target}">
-          <span style="width:${goal.percent}%"></span>
+          <span style="width:0%" data-percent="${goal.percent}"></span>
         </div>
       </div>
     `;
@@ -1378,10 +1411,30 @@
     return `${count} ${count === 1 ? "giro" : "giri"}: ${firstStatus.toLowerCase()}`;
   }
 
-  function achievementStreak() {
-    const days = new Set(state.achievements
+  function achievementDaySet() {
+    return new Set(state.achievements
       .filter((event) => event.awarded_at)
       .map((event) => dateKey(new Date(event.awarded_at))));
+  }
+
+  function achievementHeatmap(daysCount) {
+    const count = daysCount || 14;
+    const activeDays = achievementDaySet();
+    const todayKeyValue = todayKey();
+    const cells = [];
+    let cursor = addDays(parseDate(todayKeyValue), -(count - 1));
+    for (let i = 0; i < count; i += 1) {
+      const key = dateKey(cursor);
+      const active = activeDays.has(key);
+      const label = new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(cursor);
+      cells.push({ key, active, isToday: key === todayKeyValue, label: `${label}${active ? " - fatto" : ""}` });
+      cursor = addDays(cursor, 1);
+    }
+    return cells;
+  }
+
+  function achievementStreak() {
+    const days = achievementDaySet();
     let count = 0;
     let cursor = parseDate(todayKey());
     while (days.has(dateKey(cursor))) {
@@ -1719,14 +1772,20 @@
     $("#login-error").hidden = true;
   }
 
-  function showToast(message) {
+  function showToast(message, options) {
+    const celebrate = Boolean(options && options.celebrate);
     const toast = $("#toast");
     toast.textContent = message;
     toast.hidden = false;
+    toast.classList.toggle("toast-celebrate", celebrate);
+    toast.classList.remove("toast-pop");
+    void toast.offsetWidth;
+    toast.classList.add("toast-pop");
     clearTimeout(showToast.timer);
     showToast.timer = setTimeout(() => {
       toast.hidden = true;
-    }, 3500);
+      toast.classList.remove("toast-pop", "toast-celebrate");
+    }, celebrate ? 5000 : 3500);
   }
 
   function escapeHtml(value) {

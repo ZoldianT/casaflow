@@ -858,7 +858,7 @@
     $("#shopping-pack-form").hidden = true;
     showToast("Lista spesa pronta e assegnata.");
     await loadAll();
-    setView("today");
+    setView("shopping");
   }
 
   async function addLaundryItem(event) {

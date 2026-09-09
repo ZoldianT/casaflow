@@ -283,97 +283,69 @@ textarea {
   margin-bottom: 12px;
 }
 
-.achievement-panel {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fffaf4;
-  box-shadow: var(--shadow);
-  padding: 14px;
+.stats-strip {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
 }
 
-.achievement-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.stats-strip-caption {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
-.achievement-panel-head h3 {
-  margin: 0 0 6px;
-  font-size: 19px;
-}
-
-.achievement-panel-head p,
 .next-goals p,
 .achievement-goal p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.energy-ring {
-  --energy: 0%;
-  display: inline-grid;
-  flex: 0 0 auto;
-  width: 74px;
-  min-height: 74px;
-  place-items: center;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at center, var(--panel) 58%, transparent 59%),
-    conic-gradient(var(--primary) var(--energy), #eadfd1 0);
-  color: var(--ink);
-}
-
-.energy-ring strong {
-  align-self: end;
-  font-size: 21px;
-  line-height: 1;
-}
-
-.energy-ring span {
-  align-self: start;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.achievement-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 12px 0;
-}
-
-.achievement-stats article {
-  border-radius: 8px;
-  background: var(--bg);
-  padding: 10px;
-}
-
-.achievement-stats span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.achievement-stats strong {
-  display: block;
-  margin: 3px 0;
-  font-size: 24px;
-}
-
-.achievement-stats p {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
 }
 
+.stats-strip-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 14px;
+}
+
+.stat-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-chip strong {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.1;
+}
+
+.stat-chip span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+}
+
 .household-goal {
   display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.stats-strip-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-bottom: 12px;
+}
+
+.stats-strip-line > span:last-child {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .next-goals {
@@ -387,7 +359,7 @@ textarea {
 }
 
 .goal-bar {
-  height: 8px;
+  height: 5px;
   overflow: hidden;
   border-radius: 999px;
   background: #eadfd1;
@@ -404,8 +376,8 @@ textarea {
 .streak-heatmap {
   display: grid;
   grid-template-columns: repeat(14, 1fr);
-  gap: 4px;
-  margin: 12px 0;
+  gap: 3px;
+  margin: 0 0 14px;
 }
 
 .heatmap-day {
@@ -450,6 +422,12 @@ textarea {
 .reward-badge {
   background: #e8f3d6;
   color: #3f5a22;
+}
+
+.reward-badge.compact {
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .reward-strip {

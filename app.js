@@ -32,7 +32,8 @@
     laundry: [],
     reset: [],
     achievements: [],
-    seenAchievementIds: null
+    seenAchievementIds: null,
+    seenHouseholdGoals: null
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -314,8 +315,10 @@
     const streak = achievementStreak();
     const heatmap = achievementHeatmap();
     const energy = weeklyHomeEnergy();
+    const householdGoal = householdMonthlyGoal();
     const nextGoals = nextAchievementGoals().slice(0, 3);
     celebrateNewAchievements();
+    celebrateHouseholdGoal(householdGoal);
     box.innerHTML = `
       <section class="achievement-panel">
         <div class="achievement-panel-head">
@@ -343,6 +346,18 @@
         </div>
         <div class="streak-heatmap" role="img" aria-label="Giorni con qualcosa di fatto nelle ultime due settimane">
           ${heatmap.map((day) => `<span class="heatmap-day${day.active ? " active" : ""}${day.isToday ? " is-today" : ""}" title="${escapeAttr(day.label)}"></span>`).join("")}
+        </div>
+        <div class="household-goal">
+          <strong>Obiettivo di coppia</strong>
+          <div class="achievement-goal">
+            <div>
+              <span class="badge reward-badge casa">Insieme questo mese</span>
+              <p>${householdGoal.count}/${householdGoal.target} cose fatte in casa, di tutti e due</p>
+            </div>
+            <div class="goal-bar" aria-label="${householdGoal.count} su ${householdGoal.target}">
+              <span style="width:0%" data-percent="${householdGoal.percent}"></span>
+            </div>
+          </div>
         </div>
         <div class="next-goals">
           <strong>Prossimi trofei</strong>
@@ -374,9 +389,31 @@
     const freshEvents = state.achievements.filter((event) => !state.seenAchievementIds.has(event.id));
     currentIds.forEach((id) => state.seenAchievementIds.add(id));
     if (!freshEvents.length) return;
-    const milestoneEvent = freshEvents.find((event) => /^\d+x /.test(event.level_title || ""));
+    const milestoneEvent = freshEvents.find((event) => /^\d+x /.test(event.level_title || "") || event.level_title === "Sorpresa");
     const celebrated = milestoneEvent || freshEvents[0];
     if (celebrated && celebrated.message) showToast(celebrated.message, { celebrate: Boolean(milestoneEvent) });
+  }
+
+  function householdMonthlyGoal() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthKeyValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const count = state.achievements.filter((event) => event.awarded_at && new Date(event.awarded_at) >= monthStart).length;
+    const target = Math.max(20, Math.ceil((count + 1) / 20) * 20);
+    const percent = Math.min(100, Math.round((count / target) * 100));
+    return { monthKey: monthKeyValue, count, target, percent, reached: count >= target };
+  }
+
+  function celebrateHouseholdGoal(goal) {
+    const key = `${goal.monthKey}:${goal.target}`;
+    if (state.seenHouseholdGoals === null) {
+      state.seenHouseholdGoals = new Set();
+      if (goal.reached) state.seenHouseholdGoals.add(key);
+      return;
+    }
+    if (!goal.reached || state.seenHouseholdGoals.has(key)) return;
+    state.seenHouseholdGoals.add(key);
+    showToast(`Obiettivo di coppia raggiunto: ${goal.target} cose fatte insieme questo mese.`, { celebrate: true });
   }
 
   function renderAchievementGoal(goal) {
@@ -1531,7 +1568,57 @@
     const { error } = await state.client
       .from("achievement_events")
       .upsert(payload, { onConflict: "household_id,source_type,source_id,badge_code" });
+    if (!error) await maybeAwardSurpriseBadge(entry, actor);
     return error;
+  }
+
+  const SURPRISE_BADGE_CHANCE = 0.15;
+  const SURPRISE_BADGES = [
+    {
+      code: "colpo_di_fortuna",
+      title: "Colpo di fortuna",
+      tone: "sera",
+      messages: [
+        "bonus a sorpresa: oggi la fortuna era in cucina.",
+        "un extra inaspettato, tenetevelo stretto.",
+        "la casa vi ha sorpresi: bonus sbloccato."
+      ]
+    },
+    {
+      code: "squadra_fortunata",
+      title: "Squadra fortunata",
+      tone: "calm",
+      messages: [
+        "capita anche questo: piccolo bonus di squadra.",
+        "nessuno se lo aspettava, ma eccolo qui.",
+        "un colpo di fortuna condiviso in casa."
+      ]
+    }
+  ];
+
+  async function maybeAwardSurpriseBadge(entry, actor) {
+    if (Math.random() >= SURPRISE_BADGE_CHANCE) return;
+    const pick = SURPRISE_BADGES[Math.floor(Math.random() * SURPRISE_BADGES.length)];
+    const message = pick.messages[Math.floor(Math.random() * pick.messages.length)];
+    const payload = {
+      household_id: state.householdId,
+      task_id: entry.sourceType === "task" ? entry.sourceId : null,
+      source_type: entry.sourceType,
+      source_id: entry.sourceId,
+      task_title: entry.title,
+      task_category: entry.category,
+      assigned_to: entry.assignedTo || "Chi puo",
+      awarded_to: state.session.user.id,
+      awarded_to_name: actor,
+      badge_code: pick.code,
+      badge_title: pick.title,
+      badge_tone: pick.tone,
+      level_title: "Sorpresa",
+      message: `${actor} - ${message}`
+    };
+    await state.client
+      .from("achievement_events")
+      .upsert(payload, { onConflict: "household_id,source_type,source_id,badge_code" });
   }
 
   async function achievementExistsForSource(sourceType, sourceId, badgeCode) {

@@ -320,47 +320,36 @@
     celebrateNewAchievements();
     celebrateHouseholdGoal(householdGoal);
     box.innerHTML = `
-      <section class="achievement-panel">
-        <div class="achievement-panel-head">
-          <div>
-            <p class="eyebrow">Casa che gira</p>
-            <h3>${escapeHtml(energy.label)}</h3>
-            <p>${escapeHtml(streak.label)}</p>
+      <section class="stats-strip">
+        <p class="stats-strip-caption">${escapeHtml(energy.label)} - ${escapeHtml(streak.label)}</p>
+        <div class="stats-strip-row">
+          <div class="stat-chip">
+            <strong>${energy.score}%</strong>
+            <span>Energia</span>
           </div>
-          <div class="energy-ring" style="--energy:${energy.score}%">
-            <strong>${energy.score}</strong>
-            <span>energia</span>
-          </div>
-        </div>
-        <div class="achievement-stats">
-          <article>
-            <span>Streak</span>
+          <div class="stat-chip">
             <strong>${streak.days || "-"}</strong>
-            <p>${escapeHtml(streak.hint)}</p>
-          </article>
-          <article>
-            <span>Settimana</span>
+            <span>Streak</span>
+          </div>
+          <div class="stat-chip">
             <strong>${energy.events}</strong>
-            <p>${escapeHtml(energy.hint)}</p>
-          </article>
+            <span>Settimana</span>
+          </div>
         </div>
         <div class="streak-heatmap" role="img" aria-label="Giorni con qualcosa di fatto nelle ultime due settimane">
           ${heatmap.map((day) => `<span class="heatmap-day${day.active ? " active" : ""}${day.isToday ? " is-today" : ""}" title="${escapeAttr(day.label)}"></span>`).join("")}
         </div>
         <div class="household-goal">
-          <strong>Obiettivo di coppia</strong>
-          <div class="achievement-goal">
-            <div>
-              <span class="badge reward-badge casa">Insieme questo mese</span>
-              <p>${householdGoal.count}/${householdGoal.target} cose fatte in casa, di tutti e due</p>
-            </div>
-            <div class="goal-bar" aria-label="${householdGoal.count} su ${householdGoal.target}">
-              <span style="width:0%" data-percent="${householdGoal.percent}"></span>
-            </div>
+          <div class="stats-strip-line">
+            <span class="badge reward-badge compact casa">Insieme questo mese</span>
+            <span>${householdGoal.count}/${householdGoal.target}</span>
+          </div>
+          <div class="goal-bar" aria-label="${householdGoal.count} su ${householdGoal.target}">
+            <span style="width:0%" data-percent="${householdGoal.percent}"></span>
           </div>
         </div>
         <div class="next-goals">
-          <strong>Prossimi trofei</strong>
+          <p class="stats-strip-caption">Prossimi trofei</p>
           ${nextGoals.length ? nextGoals.map(renderAchievementGoal).join("") : `<p>Completa qualcosa oggi per accendere i prossimi traguardi.</p>`}
         </div>
       </section>
@@ -420,7 +409,7 @@
     return `
       <div class="achievement-goal">
         <div>
-          <span class="badge reward-badge ${escapeAttr(goal.tone)}">${escapeHtml(goal.title)}</span>
+          <span class="badge reward-badge compact ${escapeAttr(goal.tone)}">${escapeHtml(goal.title)}</span>
           <p>${goal.count}/${goal.target} verso ${escapeHtml(goal.targetLabel)}</p>
         </div>
         <div class="goal-bar" aria-label="${goal.count} su ${goal.target}">

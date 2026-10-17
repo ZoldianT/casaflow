@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CasaFlow</title>
-  <link rel="stylesheet" href="style.css?v=20261017-paste-shopping-list">
+  <link rel="stylesheet" href="style.css?v=20261017-direct-shopping-trip">
 </head>
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
@@ -95,18 +95,6 @@
         <button class="primary" type="submit">Aggiungi tutto</button>
       </form>
       <button id="start-shopping-trip-btn" class="shopping-start" type="button">Sto andando a fare la spesa</button>
-      <form id="shopping-pack-form" class="pack-form" hidden>
-        <label>Lista
-          <input id="shopping-pack-title" type="text" placeholder="Spesa alimentari">
-        </label>
-        <label>Categoria
-          <select id="shopping-pack-category" aria-label="Categoria lista spesa"></select>
-        </label>
-        <label>Assegna a
-          <select id="shopping-pack-assigned" aria-label="Assegna spesa"></select>
-        </label>
-        <button class="primary" type="submit">Crea lista spesa</button>
-      </form>
       <div id="shopping-trips" class="card-list"></div>
       <div id="shopping-list" class="card-list"></div>
     </section>
@@ -208,7 +196,7 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=20261017-paste-shopping-list"></script>
-  <script src="app.js?v=20261017-paste-shopping-list"></script>
+  <script src="config.js?v=20261017-direct-shopping-trip"></script>
+  <script src="app.js?v=20261017-direct-shopping-trip"></script>
 </body>
 </html>

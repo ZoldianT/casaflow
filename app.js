@@ -106,8 +106,7 @@
     $("#shopping-quick-form").addEventListener("submit", addShoppingItem);
     $("#paste-shopping-btn").addEventListener("click", showShoppingPasteForm);
     $("#shopping-paste-form").addEventListener("submit", addShoppingItemsFromPaste);
-    $("#start-shopping-trip-btn").addEventListener("click", showShoppingTripForm);
-    $("#shopping-pack-form").addEventListener("submit", createShoppingTrip);
+    $("#start-shopping-trip-btn").addEventListener("click", startShoppingTrip);
     $("#laundry-quick-form").addEventListener("submit", addLaundryItem);
     $("#reset-today-btn").addEventListener("click", resetTodayChecklist);
 
@@ -123,11 +122,8 @@
     fillSelect("#task-status", TASK_STATUSES);
     fillSelect("#task-recurrence", RECURRENCES);
     fillSelect("#shopping-category", SHOPPING_CATEGORIES);
-    fillSelect("#shopping-pack-category", ["Tutte", ...SHOPPING_CATEGORIES]);
-    fillSelect("#shopping-pack-assigned", ASSIGNEES);
     fillSelect("#laundry-assigned", ASSIGNEES);
     $("#laundry-assigned").value = "Chi puo";
-    $("#shopping-pack-assigned").value = "Chi puo";
   }
 
   function fillSelect(selector, values) {
@@ -898,21 +894,18 @@
     await loadAll();
   }
 
-  async function createShoppingTrip(event) {
-    event.preventDefault();
-    const category = $("#shopping-pack-category").value;
-    const assignedTo = $("#shopping-pack-assigned").value;
+  async function startShoppingTrip() {
     const packedIds = activePackedShoppingIds();
     const candidates = state.shopping.filter((item) => (
       item.status === "Da comprare" &&
-      !packedIds.has(item.id) &&
-      (category === "Tutte" || item.category === category)
+      !packedIds.has(item.id)
     ));
 
-    if (!candidates.length) return showToast("Non ci sono cose da mettere in lista per questa categoria.");
+    if (!candidates.length) return showToast("Non ci sono cose da mettere in lista.");
     setSyncStatus("saving", "Salvataggio...");
 
-    const title = $("#shopping-pack-title").value.trim() || (category === "Tutte" ? "Fare la spesa" : `Spesa ${category.toLowerCase()}`);
+    const title = "Fare la spesa";
+    const assignedTo = "Chi puo";
     const { data: task, error: taskError } = await state.client
       .from("tasks")
       .insert({
@@ -921,7 +914,7 @@
         note: candidates.map((item) => `- ${item.title}`).join("\n"),
         category: "Spesa",
         assigned_to: assignedTo,
-        priority: category === "Bimba" || category === "Farmacia" ? "Essenziale" : "Normale",
+        priority: "Normale",
         due_date: todayKey(),
         status: "Da fare",
         recurrence: "Nessuna",
@@ -957,8 +950,6 @@
     const { error: itemsError } = await state.client.from("shopping_trip_items").insert(rows);
     if (itemsError) return showActionError("Non riesco ad aggiungere gli articoli alla lista spesa.");
 
-    $("#shopping-pack-title").value = "";
-    $("#shopping-pack-form").hidden = true;
     showToast("Lista spesa pronta e assegnata.");
     await loadAll();
     setView("shopping");
@@ -1311,12 +1302,6 @@
       return;
     }
     openTaskDialog();
-  }
-
-  function showShoppingTripForm() {
-    const form = $("#shopping-pack-form");
-    form.hidden = !form.hidden;
-    if (!form.hidden) $("#shopping-pack-title").focus();
   }
 
   function renderNavBadges() {

@@ -104,6 +104,8 @@
 
     $("#task-form").addEventListener("submit", saveTask);
     $("#shopping-quick-form").addEventListener("submit", addShoppingItem);
+    $("#paste-shopping-btn").addEventListener("click", showShoppingPasteForm);
+    $("#shopping-paste-form").addEventListener("submit", addShoppingItemsFromPaste);
     $("#start-shopping-trip-btn").addEventListener("click", showShoppingTripForm);
     $("#shopping-pack-form").addEventListener("submit", createShoppingTrip);
     $("#laundry-quick-form").addEventListener("submit", addLaundryItem);
@@ -831,6 +833,48 @@
     });
     if (error) return showActionError("Non riesco ad aggiungere questa cosa alla spesa.");
     $("#shopping-title").value = "";
+    await loadAll();
+  }
+
+  function showShoppingPasteForm() {
+    const form = $("#shopping-paste-form");
+    form.hidden = !form.hidden;
+    if (!form.hidden) $("#shopping-paste-text").focus();
+  }
+
+  const SHOPPING_PASTE_MAX_ITEMS = 50;
+
+  function parseShoppingPasteList(raw) {
+    const seen = new Set();
+    const items = [];
+    raw.split(/\r?\n/).flatMap((line) => line.split(",")).forEach((line) => {
+      const title = line.replace(/^[\s*•·-]+/, "").replace(/^\d+[.)]\s*/, "").trim();
+      if (!title) return;
+      const key = title.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push(title);
+    });
+    return items;
+  }
+
+  async function addShoppingItemsFromPaste(event) {
+    event.preventDefault();
+    const titles = parseShoppingPasteList($("#shopping-paste-text").value).slice(0, SHOPPING_PASTE_MAX_ITEMS);
+    if (!titles.length) return showToast("Incolla almeno una cosa da aggiungere.");
+    setSyncStatus("saving", "Salvataggio...");
+    const rows = titles.map((title) => ({
+      household_id: state.householdId,
+      title,
+      category: "Alimentari",
+      status: "Da comprare",
+      created_by: state.session.user.id
+    }));
+    const { error } = await state.client.from("shopping_items").insert(rows);
+    if (error) return showActionError("Non riesco ad aggiungere la lista alla spesa.");
+    $("#shopping-paste-text").value = "";
+    $("#shopping-paste-form").hidden = true;
+    showToast(`${titles.length} ${titles.length === 1 ? "cosa aggiunta" : "cose aggiunte"} alla spesa.`);
     await loadAll();
   }
 
